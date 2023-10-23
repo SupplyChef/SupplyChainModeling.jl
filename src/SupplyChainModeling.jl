@@ -12,6 +12,8 @@ export Plant
 export Transport
 export Lane
 
+export add_product!
+
 import Base.isequal
 
 """
