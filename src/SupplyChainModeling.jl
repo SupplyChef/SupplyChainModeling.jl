@@ -17,6 +17,7 @@ export add_product!
 export get_destinations
 export is_destination
 export get_leadtime
+export get_fixed_cost
 
 import Base.isequal
 
