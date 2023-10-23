@@ -8,6 +8,8 @@ export Customer
 export Supplier
 export Storage
 export Plant
+
+export Transport
 export Lane
 
 import Base.isequal
@@ -60,7 +62,6 @@ Base.:(==)(x::Customer, y::Customer) = x.name == y.name
 Base.hash(x::Customer, h::UInt64) = hash(x.name, h)
 Base.show(io::IO, x::Customer) = print(io, x.name)
 
-
 """
 A supplier.
 """
@@ -91,6 +92,23 @@ end
 Base.:(==)(x::Supplier, y::Supplier) = x.name == y.name 
 Base.hash(x::Supplier, h::UInt64) = hash(x.name, h)
 Base.show(io::IO, x::Supplier) = print(io, x.name)
+
+
+"""
+    add_product!(supplier::Supplier, product::Product; unit_cost::Float64, maximum_throughput::Float64)
+
+Indicates that a supplier can provide a product.
+
+The keyword arguments are:
+ - `unit_cost`: the cost per unit of the product from this supplier.
+ - `maximum_throughput`: the maximum number of units that can be provided in each time period.
+
+"""
+function add_product!(supplier::Supplier, product; unit_cost::Real, maximum_throughput::Real=Inf)
+    supplier.unit_cost[product] = unit_cost
+    supplier.maximum_throughput[product] = maximum_throughput
+end
+
 
 """
 A storage location.
@@ -163,15 +181,18 @@ struct Storage <: Node
     end
 end
 
-function add_product!(storage::Storage, product; initial_inventory::Union{Real, Nothing}=0, unit_handling_cost::Real=0, maximum_throughput::Float64=Inf, additional_stock_cover::Real=0.0)
-    if !isnothing(initial_inventory)
-        storage.initial_inventory[product] = initial_inventory
-    end
-    if unit_handling_cost > 0
-        storage.unit_handling_cost[product] = unit_handling_cost
-    end
+function add_product!(storage::Storage, product; initial_inventory::Real=0, 
+                                                 unit_handling_cost::Real=0,
+                                                 unit_holding_cost::Real=0, 
+                                                 maximum_throughput::Float64=Inf, 
+                                                 additional_stock_cover::Real=0.0)
+    storage.initial_inventory[product] = initial_inventory
+    storage.unit_handling_cost[product] = unit_handling_cost
+    storage.unit_holding_cost[product] = unit_holding_cost
     if !isinf(maximum_throughput)
         storage.maximum_throughput[product] = maximum_throughput
+    else
+        delete!(storage.maximum_throughput, product)
     end
     storage.additional_stock_cover[product] = additional_stock_cover
 end
