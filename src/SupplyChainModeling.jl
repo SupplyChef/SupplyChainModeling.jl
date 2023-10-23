@@ -65,13 +65,20 @@ struct Supplier <: Node
 
     maximum_throughput::Dict{Product, Float64}
 
-    location::Location
+    location::Union{Location, Missing}
 
     """
     Creates a new supplier.
     """
     function Supplier(name::String, location::Location)
         return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), location)
+    end
+
+    """
+    Creates a new supplier.
+    """
+    function Supplier(name::String)
+        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), missing)
     end
 end
 
@@ -102,7 +109,7 @@ struct Storage <: Node
     maximum_units::Dict{Product, Float64}
     additional_stock_cover::Dict{Product, Float64}
 
-    location::Location
+    location::Union{Location, Missing}
 
     """
     Creates a new storage location.
@@ -122,6 +129,26 @@ struct Storage <: Node
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    location)
+    end
+
+    """
+    Creates a new storage location.
+    """
+    function Storage(name::String; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf, 
+                     initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
+                     #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
+        return new(name,
+                   fixed_cost, opening_cost, closing_cost, 
+                   initial_opened, 
+                   Dict{Product, Float64}(),
+                   false,#must_be_opened_at_end,
+                   false,#must_be_closed_at_end, 
+                   Dict{Product, Float64}(), 
+                   Dict{Product, Float64}(), 
+                   maximum_overall_throughput, 
+                   Dict{Product, Float64}(), 
+                   Dict{Product, Float64}(), 
+                   missing)
     end
 end
 
