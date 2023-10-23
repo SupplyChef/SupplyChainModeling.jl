@@ -1,6 +1,16 @@
 module SupplyChainModeling
 
+export Node
+export Location
+export Customer
+export Supplier
+export Storage
+export Plant
+export Lane
+
 abstract type Node end
+
+abstract type Product end
 
 """
 The geographical location of a node of the supply chain. 
