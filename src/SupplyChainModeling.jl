@@ -1,5 +1,7 @@
 module SupplyChainModeling
 
+export Product
+
 export Node
 export Location
 export Customer
@@ -7,6 +9,7 @@ export Supplier
 export Storage
 export Plant
 export Lane
+
 
 abstract type Node end
 
@@ -195,7 +198,7 @@ Base.:(==)(x::Plant, y::Plant) = x.name == y.name
 Base.hash(x::Plant, h::UInt64) = hash(x.name, h)
 Base.show(io::IO, x::Plant) = print(io, x.name)
 
-struct Lane <: Transport
+struct Lane
     origin::Union{Supplier, Storage, Customer}
     destination::Union{Supplier, Storage, Customer}
 
