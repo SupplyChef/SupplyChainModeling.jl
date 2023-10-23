@@ -95,8 +95,12 @@ function is_destination(location, lane::Lane)
     return location ∈ get_destinations(lane)
 end
 
-function get_leadtime(lane::Lane, destination)
+function get_leadtime(lane::Lane, destination::Int64)
     return lane.times[destination]
+end
+
+function get_leadtime(lane::Lane, destination::Node)
+    return lane.times[findfirst(d -> d == destination, lane.destinations)]
 end
 
 end
