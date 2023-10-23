@@ -10,8 +10,14 @@ export Storage
 export Plant
 export Lane
 
+import Base.isequal
 
+"""
+A node of the supply chain.
+"""
 abstract type Node end
+
+abstract type Transport end
 
 abstract type Product end
 
@@ -104,9 +110,12 @@ struct Storage <: Node
     must_be_closed_at_end::Bool
 
     unit_handling_cost::Dict{Product, Float64}
+    unit_holding_cost::Dict{Product, Float64}
+
     maximum_throughput::Dict{Product, Float64}
     maximum_overall_throughput::Float64
     maximum_units::Dict{Product, Float64}
+    
     additional_stock_cover::Dict{Product, Float64}
 
     location::Union{Location, Missing}
@@ -123,6 +132,7 @@ struct Storage <: Node
                    Dict{Product, Float64}(),
                    false,#must_be_opened_at_end,
                    false,#must_be_closed_at_end, 
+                   Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    maximum_overall_throughput, 
@@ -143,6 +153,7 @@ struct Storage <: Node
                    Dict{Product, Float64}(),
                    false,#must_be_opened_at_end,
                    false,#must_be_closed_at_end, 
+                   Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    maximum_overall_throughput, 
@@ -225,7 +236,7 @@ Base.:(==)(x::Plant, y::Plant) = x.name == y.name
 Base.hash(x::Plant, h::UInt64) = hash(x.name, h)
 Base.show(io::IO, x::Plant) = print(io, x.name)
 
-struct Lane
+struct Lane <: Transport
     origin::Union{Supplier, Storage, Customer}
     destination::Union{Supplier, Storage, Customer}
 
@@ -240,5 +251,9 @@ struct Lane
         return new(origin, destination, fixed_cost, unit_cost, lead_time, can_ship)
     end
 end
+
+Base.:(==)(x::Lane, y::Lane) = x.origin == y.origin &&  x.destination == y.destination
+Base.hash(x::Lane, h::UInt64) = hash(x.origin, hash(x.destination, h))
+Base.show(io::IO, x::Lane) = print(io, "$(x.origin) $(x.destination)")
 
 end
