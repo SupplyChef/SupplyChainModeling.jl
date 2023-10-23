@@ -92,11 +92,11 @@ function get_destinations(lane::Lane)
 end
 
 function is_destination(location, lane::Lane)
-    return location ∈ get_destinations(route)
+    return location ∈ get_destinations(lane)
 end
 
 function get_leadtime(lane::Lane, destination)
-    return route.lead_times[destination]
+    return lane.times[destination]
 end
 
 end
