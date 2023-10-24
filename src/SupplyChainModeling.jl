@@ -98,8 +98,8 @@ mutable struct SupplyChain
                  Set{Plant}(), 
                  Lane[], 
                  Set{Demand}(),
-                 Dict{Node, Set{Int32}}(), 
-                 Dict{Node, Set{Int32}}(),
+                 Dict{Node, Set{Lane}}(), 
+                 Dict{Node, Set{Lane}}(),
                  nothing,
                  discount_factor)
         return sc
