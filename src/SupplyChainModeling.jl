@@ -18,7 +18,13 @@ export Lane
 
 export add_product!
 export add_demand!
+export add_customer!
+export add_storage!
+export add_plant!
+export add_supplier!
+export add_lane!
 
+export can_ship
 export get_destinations
 export is_destination
 export get_leadtime
@@ -142,5 +148,76 @@ function add_product!(supply_chain::SupplyChain, product)
     return product
 end
 
+
+"""
+    add_customer!(supply_chain, customer)
+
+Adds a customer to the supply chain.
+"""
+function add_customer!(supply_chain::SupplyChain, customer)
+    push!(supply_chain.customers, customer)
+    return customer
+end
+
+"""
+    add_supplier!(supply_chain, supplier)
+
+Adds a supplier to the supply chain.
+"""
+function add_supplier!(supply_chain::SupplyChain, supplier)
+    push!(supply_chain.suppliers, supplier)
+    return supplier
+end
+
+"""
+    add_storage!(supply_chain, storage)
+
+Adds a storage location to the supply chain.
+"""
+function add_storage!(supply_chain::SupplyChain, storage)
+    push!(supply_chain.storages, storage)
+    return storage
+end
+
+"""
+    add_plant!(supply_chain, plant)
+
+Adds a plant to the supply chain.
+"""
+function add_plant!(supply_chain::SupplyChain, plant)
+    push!(supply_chain.plants, plant)
+    return plant
+end
+
+"""
+    add_lane!(supply_chain, lane)
+
+Adds a transportation lane to the supply chain.
+"""
+function add_lane!(supply_chain::SupplyChain, lane::Lane)
+    push!(supply_chain.lanes, lane)
+
+    for destination in lane.destinations
+        if !haskey(supply_chain.lanes_in, destination)
+            supply_chain.lanes_in[destination] = Set{Lane}()
+        end
+        push!(supply_chain.lanes_in[destination], lane)
+    end
+
+    if !haskey(supply_chain.lanes_out, lane.origin)
+        supply_chain.lanes_out[lane.origin] = Set{Lane}()
+    end
+    push!(supply_chain.lanes_out[lane.origin], lane)
+    return lane
+end
+
+"""
+    can_ship(lane::Lane, time::Int)
+
+Checks if units can be send on the lane at a given time.
+"""
+function can_ship(lane::Lane, time::Int)
+    return isnothing(lane.can_ship) || isempty(lane.can_ship) || lane.can_ship[time]
+end
 
 end
