@@ -1,6 +1,10 @@
 module SupplyChainModeling
 
+export SupplyChain
+
 export Product
+
+export Demand
 
 export Node
 export Location
@@ -13,6 +17,7 @@ export Transport
 export Lane
 
 export add_product!
+export add_demand!
 
 export get_destinations
 export is_destination
