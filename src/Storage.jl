@@ -88,3 +88,7 @@ function add_product!(storage::Storage, product; initial_inventory::Real=0,
     end
     storage.additional_stock_cover[product] = additional_stock_cover
 end
+
+function get_initial_inventory(storage, product)
+    return get(storage.initial_inventory, product, 0)
+end

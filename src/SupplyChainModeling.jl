@@ -30,6 +30,8 @@ export is_destination
 export get_leadtime
 export get_fixed_cost
 
+export get_initial_inventory
+
 import Base.isequal
 
 """
