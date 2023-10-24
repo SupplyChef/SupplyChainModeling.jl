@@ -80,8 +80,8 @@ mutable struct SupplyChain
     lanes::Array{Lane, 1}
     demand::Set{Demand}
 
-    lanes_in::Dict{Node, Set{Int32}}
-    lanes_out::Dict{Node, Set{Int32}}
+    lanes_in::Dict{Node, Set{Lane}}
+    lanes_out::Dict{Node, Set{Lane}}
 
     optimization_model
     discount_factor
