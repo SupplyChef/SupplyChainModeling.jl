@@ -92,3 +92,11 @@ end
 function get_initial_inventory(storage, product)
     return get(storage.initial_inventory, product, 0)
 end
+
+function get_maximum_storage(node, product)
+    if(haskey(node.maximum_units, product))
+        return node.maximum_units[product]
+    else
+        return Inf
+    end
+end
