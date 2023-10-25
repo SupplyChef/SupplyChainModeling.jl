@@ -60,26 +60,11 @@ Base.show(io::IO, x::Product) = print(io, x.name)
 
 include("Location.jl")
 include("Customer.jl")
+include("Demand.jl")
 include("Plant.jl")
 include("Storage.jl")
 include("Supplier.jl")
 include("Lane.jl")
-
-"""
-The demand a customer has for a product.
-"""
-struct Demand
-    customer::Customer
-    product::Product
-    probability::Float64
-    demand::Array{Float64, 1}
-    service_level::Float64
-
-    function Demand(customer::Customer, product::Product, demand::Array{Float64, 1}, service_level)
-        return new(customer, product, 1.0, demand, service_level)
-    end
-end
-
-
+include("SupplyChain.jl")
 
 end
