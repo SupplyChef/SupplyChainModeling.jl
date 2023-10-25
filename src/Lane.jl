@@ -84,3 +84,12 @@ function get_arrivals(product::Product, lane::Lane, destination, time::Int)
         return lane.initial_arrivals[product][time][index]
     end
 end
+
+"""
+    can_ship(lane::Lane, time::Int)
+
+Checks if units can be send on the lane at a given time.
+"""
+function can_ship(lane::Lane, time::Int)
+    return isnothing(lane.can_ship) || isempty(lane.can_ship) || lane.can_ship[time]
+end
