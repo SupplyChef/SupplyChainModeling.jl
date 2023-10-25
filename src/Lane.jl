@@ -70,3 +70,17 @@ end
 function get_fixed_cost(lane::Lane)
     return lane.fixed_cost
 end
+
+"""
+    get_arrivals(lane::Lane, destination, time::Int)
+
+Gets the known arrivals.
+"""
+function get_arrivals(product::Product, lane::Lane, destination, time::Int)
+    index = findfirst(d -> d == destination, lane.destinations)
+    if isnothing(lane.initial_arrivals) || !haskey(lane.initial_arrivals, product) || isnothing(index)
+        return 0
+    else
+        return lane.initial_arrivals[product][time][index]
+    end
+end
