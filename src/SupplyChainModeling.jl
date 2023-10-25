@@ -31,6 +31,8 @@ export get_leadtime
 export get_fixed_cost
 
 export get_initial_inventory
+export get_maximum_storage
+export get_arrivals
 
 import Base.isequal
 
