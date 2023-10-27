@@ -81,11 +81,7 @@ function add_product!(storage::Storage, product; initial_inventory::Real=0,
     storage.initial_inventory[product] = initial_inventory
     storage.unit_handling_cost[product] = unit_handling_cost
     storage.unit_holding_cost[product] = unit_holding_cost
-    if !isinf(maximum_throughput)
-        storage.maximum_throughput[product] = maximum_throughput
-    else
-        delete!(storage.maximum_throughput, product)
-    end
+    storage.maximum_throughput[product] = maximum_throughput
     storage.additional_stock_cover[product] = additional_stock_cover
 end
 
