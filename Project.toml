@@ -1,9 +1,9 @@
 name = "SupplyChainModeling"
 uuid = "8a0b78ce-42db-494b-a45c-80b287de1a3d"
 authors = ["SupplyChef <47842426+SupplyChef@users.noreply.github.com>"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 
 [compat]
-julia = "1.8"
+julia = "1.8, 1.9"
