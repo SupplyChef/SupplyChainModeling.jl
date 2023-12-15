@@ -47,8 +47,8 @@ struct Lane <: Transport
     end
 end
 
-Base.:(==)(x::Lane, y::Lane) = x.origin == y.origin &&  length(x.destinations) == length(y.destinations) && all([x.destinations[i] == y.destinations[i] for i in 1:length(x.destinations)])
-Base.hash(x::Lane, h::UInt64) = hash(x.origin, sum(hash(x.destinations[i], h) for i in 1:length(x.destinations)))
+Base.:(==)(x::Lane, y::Lane) = (x.origin == y.origin) &&  length(x.destinations) == length(y.destinations) && all([x.destinations[i] == y.destinations[i] for i in 1:length(x.destinations)]) && all([x.times[i] == y.times[i] for i in 1:length(x.destinations)])
+Base.hash(x::Lane, h::UInt64) = hash(x.origin, sum(hash(x.destinations[i], h) for i in 1:length(x.destinations)) + sum(hash(x.times[i], h) for i in 1:length(x.times)))
 Base.show(io::IO, x::Lane) = print(io, "$(x.origin) $(x.destinations)")
 
 function get_destinations(lane::Lane)
