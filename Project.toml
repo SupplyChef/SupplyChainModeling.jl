@@ -1,7 +1,7 @@
 name = "SupplyChainModeling"
 uuid = "8a0b78ce-42db-494b-a45c-80b287de1a3d"
 authors = ["SupplyChef <47842426+SupplyChef@users.noreply.github.com>"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 

@@ -38,20 +38,19 @@ mutable struct SupplyChain
 end
 
 """
-    add_demand!(supply_chain, customer, product; demand::Array{Float64, 1}, service_level=1.0)
+    add_demand!(supply_chain, customer, product, demand::Array{Float64, 1}; service_level=1.0)
 
 Adds customer demand for a product. The demand is specified for each time period.
 
 The keyword arguments are:
- - `demand`: the amount of product demanded for each time period.
  - `service_level`: indicates how many lost sales are allowed as a ratio of demand. No demand can be lost if the service level is 1.0 and all demand can be lost if the service level is 0.0. 
 
 """
-function add_demand!(supply_chain, customer, product; demand::Array{Float64, 1}, service_level=1.0)
+function add_demand!(supply_chain, customer, product, demand::Array{R, 1}; service_level=1.0) where R <: Real
     if service_level < 0.0 || service_level > 1.0
         throw(DomainError("service_level must be between 0.0 and 1.0 inclusive"))
     end
-    add_demand!(supply_chain, Demand(customer, product, demand, service_level))
+    add_demand!(supply_chain, Demand(customer, product, demand; service_level=service_level))
 end
 
 """

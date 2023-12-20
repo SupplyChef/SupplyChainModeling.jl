@@ -38,5 +38,7 @@ end
     add_lane!(network, l3)
     add_lane!(network, l4)
 
+    add_demand!(network, customer, product, repeat([10], horizon); service_level=1.0)
+
     true
 end
