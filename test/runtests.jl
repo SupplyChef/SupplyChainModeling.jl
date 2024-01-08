@@ -17,6 +17,16 @@ using SupplyChainModeling
 end
 
 @test begin
+    customer = Customer("customer")
+    retailer = Storage("retailer")
+    wholesaler = Storage("wholesaler")
+
+    l1 = Lane(retailer, customer; unit_cost=0)
+
+    is_destination(customer, l1) && !is_destination(retailer, l1)
+end
+
+@test begin
     product = Product("product")
 
     customer = Customer("customer")

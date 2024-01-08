@@ -86,7 +86,7 @@ end
 
 Checks if a location is a destination of a lane.
 """
-function is_destination(location, lane::Lane)::bool
+function is_destination(location, lane::Lane)::Bool
     return location ∈ get_destinations(lane)
 end
 
