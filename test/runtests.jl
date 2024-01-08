@@ -3,7 +3,17 @@ using Test
 using SupplyChainModeling
 
 @test begin
-    true
+    customer = Customer("customer")
+    retailer = Storage("retailer")
+    wholesaler = Storage("wholesaler")
+
+    l1 = Lane(retailer, customer; unit_cost=0)
+    l2 = Lane(retailer, customer; unit_cost=0)
+    l3 = Lane(retailer, customer; id="foo", unit_cost=0)
+
+    l4 = Lane(wholesaler, retailer)
+
+    (l1 == l2) && (l1 != l3) && (l1 != l4) 
 end
 
 @test begin
