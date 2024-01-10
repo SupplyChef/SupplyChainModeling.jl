@@ -43,14 +43,16 @@ end
 Adds customer demand for a product. The demand is specified for each time period.
 
 The keyword arguments are:
- - `service_level`: indicates how many lost sales are allowed as a ratio of demand. No demand can be lost if the service level is 1.0 and all demand can be lost if the service level is 0.0. 
+ - `service_level`: indicates how many lost sales are allowed as a ratio of demand. No demand can be lost if the service level is 1.0 and all demand can be lost if the service level is 0.0.
+ - `sales_price`: the sales price of a unit of product.
+ - `lost_sales_cost`: the cost of losing the sales of a unit of product.
 
 """
-function add_demand!(supply_chain, customer, product, demand::Array{R, 1}; service_level=1.0) where R <: Real
+function add_demand!(supply_chain, customer, product, demand::Array{R, 1}; sales_price=0.0, lost_sales_cost=0.0, service_level=1.0) where R <: Real
     if service_level < 0.0 || service_level > 1.0
         throw(DomainError("service_level must be between 0.0 and 1.0 inclusive"))
     end
-    add_demand!(supply_chain, Demand(customer, product, demand; service_level=service_level))
+    add_demand!(supply_chain, Demand(customer, product, demand; sales_price=sales_price, lost_sales_cost=lost_sales_cost, service_level=service_level))
 end
 
 """
