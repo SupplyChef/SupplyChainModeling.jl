@@ -103,6 +103,11 @@ function get_leadtime(lane::Lane, destination::Node)
     return lane.times[findfirst(d -> d == destination, lane.destinations)]
 end
 
+"""
+    get_fixed_cost(lane::Lane)
+
+Gets the fixed cost of using a lane.
+"""
 function get_fixed_cost(lane::Lane)
     return lane.fixed_cost
 end

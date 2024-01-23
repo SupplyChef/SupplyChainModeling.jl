@@ -100,6 +100,11 @@ function add_product!(storage::Storage, product; initial_inventory::Real=0,
     storage.additional_stock_cover[product] = additional_stock_cover
 end
 
+"""
+    get_initial_inventory(storage, product)
+
+Gets the inventory at the storage location at the start of the simulation.
+"""
 function get_initial_inventory(storage, product)
     return get(storage.initial_inventory, product, 0)
 end

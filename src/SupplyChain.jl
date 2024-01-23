@@ -137,6 +137,11 @@ function add_lane!(supply_chain::SupplyChain, lane::Lane)
     return lane
 end
 
+"""
+    get_lanes_between(supply_chain, from, to)::Set{Lane}()
+
+Gets the lanes between two locations in the supply chain.
+"""
 function get_lanes_between(supply_chain, from, to)
     if(haskey(supply_chain.lanes_out, from) && haskey(supply_chain.lanes_in, to))
         return intersect(supply_chain.lanes_out[from], supply_chain.lanes_in[to])
@@ -144,17 +149,27 @@ function get_lanes_between(supply_chain, from, to)
     return Set{Lane}()
 end
 
+"""
+    get_lanes_in(supply_chain, node)::Set{Lane}()
+
+Gets the lanes going into a node in the supply chain.
+"""
 function get_lanes_in(supply_chain, node)
     if(haskey(supply_chain.lanes_in, node))
         return supply_chain.lanes_in[node]
     else
-        return Set{Int32}()
+        return Set{Lane}()
     end
 end
 
+"""
+    get_lanes_out(supply_chain, node)::Set{Lane}()
+
+Gets the lanes coming out of a node in the supply chain.
+"""
 function get_lanes_out(supply_chain, node)
     if(haskey(supply_chain.lanes_out, node))
         return supply_chain.lanes_out[node]
     end
-    return Set{Int32}()
+    return Set{Lane}()
 end
