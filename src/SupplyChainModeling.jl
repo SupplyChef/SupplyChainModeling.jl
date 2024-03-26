@@ -15,6 +15,7 @@ export Plant
 
 export Transport
 export Lane
+export VehicleType
 
 export add_product!
 export add_demand!
@@ -46,18 +47,8 @@ abstract type Node end
 
 abstract type Transport end
 
-struct Product
-    name::String
-
-    function Product(name)
-        return new(name)
-    end
-end
-
-Base.:(==)(x::Product, y::Product) = x.name == y.name 
-Base.hash(x::Product, h::UInt64) = hash(x.name, h)
-Base.show(io::IO, x::Product) = print(io, x.name)
-
+include("VehicleType.jl")
+include("Product.jl")
 include("Location.jl")
 include("Customer.jl")
 include("Demand.jl")
