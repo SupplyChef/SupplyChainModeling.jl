@@ -13,6 +13,7 @@ mutable struct SupplyChain
 
     lanes_in::Dict{Node, Set{Lane}}
     lanes_out::Dict{Node, Set{Lane}}
+    demand_for::Dict{Tuple{Customer, Product}, Set{Demand}}
 
     optimization_model
     discount_factor
@@ -31,6 +32,7 @@ mutable struct SupplyChain
                  Set{Demand}(),
                  Dict{Node, Set{Lane}}(), 
                  Dict{Node, Set{Lane}}(),
+                 Dict{Tuple{Customer, Product}, Set{Demand}}(),
                  nothing,
                  discount_factor)
         return sc
@@ -62,6 +64,10 @@ Adds demand to the supply chain.
 """
 function add_demand!(supply_chain::SupplyChain, demand)
     push!(supply_chain.demand, demand)
+    if !haskey(supply_chain.demand_for, (demand.customer, demand.product))
+        supply_chain.demand_for[(demand.customer, demand.product)] = Set{Demand}()
+    end
+    push!(supply_chain.demand_for[(demand.customer, demand.product)], demand)
 end
 
 """
