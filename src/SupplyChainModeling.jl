@@ -33,10 +33,13 @@ export get_fixed_cost
 
 export get_initial_inventory
 export get_maximum_storage
+export get_maximum_throughput
 export get_arrivals
 export get_lanes_between
 export get_lanes_in
 export get_lanes_out
+
+export get_demand
 
 import Base.isequal
 

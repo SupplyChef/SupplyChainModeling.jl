@@ -179,3 +179,28 @@ function get_lanes_out(supply_chain, node)
     end
     return Set{Lane}()
 end
+
+"""
+    get_demand(supply_chain, customer, product, time)
+
+Gets the demand of a customer for a product at a given time.
+"""
+function get_demand(supply_chain, customer, product, time)
+    if haskey(supply_chain.demand_for, (customer, product))
+        return first(supply_chain.demand_for[(customer, product)]).demand[time]
+    end
+    return 0
+end
+
+"""
+    get_maximum_throughput(node, product)
+
+Gets the maximum throughput for a product at a given node.
+"""
+function get_maximum_throughput(node, product)
+    if(haskey(node.maximum_throughput, product))
+        return node.maximum_throughput[product]
+    else
+        return 0
+    end
+end
