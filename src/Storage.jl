@@ -26,6 +26,8 @@ struct Storage <: Node
 
     location::Union{Location, Missing}
 
+    maximum_age::Dict{Product, Int64}
+
     """
     Creates a new storage location.
     """
@@ -44,7 +46,8 @@ struct Storage <: Node
                    maximum_overall_throughput, 
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
-                   location)
+                   location,
+                   Dict{Product, Int64}())
     end
 
     """
@@ -65,7 +68,8 @@ struct Storage <: Node
                    maximum_overall_throughput, 
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
-                   missing)
+                   missing,
+                   Dict{Product, Int64}())
     end
 end
 
@@ -92,12 +96,16 @@ function add_product!(storage::Storage, product; initial_inventory::Real=0,
                                                  unit_handling_cost::Real=0,
                                                  unit_holding_cost::Real=0, 
                                                  maximum_throughput::Float64=Inf, 
-                                                 additional_stock_cover::Real=0.0)
+                                                 additional_stock_cover::Real=0.0,
+                                                 maximum_age::Union{Missing, Int64}=missing)
     storage.initial_inventory[product] = initial_inventory
     storage.unit_handling_cost[product] = unit_handling_cost
     storage.unit_holding_cost[product] = unit_holding_cost
     storage.maximum_throughput[product] = maximum_throughput
     storage.additional_stock_cover[product] = additional_stock_cover
+    if !ismissing(maximum_age)
+        storage.maximum_age[product] = maximum_age
+    end
 end
 
 """
@@ -112,6 +120,14 @@ end
 function get_maximum_storage(node, product)
     if(haskey(node.maximum_units, product))
         return node.maximum_units[product]
+    else
+        return Inf
+    end
+end
+
+function get_maximum_age(node, product)
+    if(haskey(node.maximum_age, product))
+        return node.maximum_age[product]
     else
         return Inf
     end
