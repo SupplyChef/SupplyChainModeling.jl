@@ -28,6 +28,8 @@ struct Storage <: Node
 
     maximum_age::Dict{Product, Int64}
 
+    overflow_unit_cost::Dict{Product, Float64}
+
     """
     Creates a new storage location.
     """
@@ -47,13 +49,14 @@ struct Storage <: Node
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    location,
-                   Dict{Product, Int64}())
+                   Dict{Product, Int64}(),
+                   Dict{Product, Float64}())
     end
 
     """
     Creates a new storage location.
     """
-    function Storage(name::String; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf, 
+    function Storage(name::String; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf,
                      initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
                      #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
         return new(name,
@@ -69,7 +72,8 @@ struct Storage <: Node
                    Dict{Product, Float64}(), 
                    Dict{Product, Float64}(), 
                    missing,
-                   Dict{Product, Int64}())
+                   Dict{Product, Int64}(),
+                   Dict{Product, Float64}())
     end
 end
 
@@ -78,11 +82,13 @@ Base.hash(x::Storage, h::UInt64) = hash(x.name, h)
 Base.show(io::IO, x::Storage) = print(io, x.name)
 
 """
-    add_product!(storage::Storage, product; initial_inventory::Real=0, 
+    add_product!(storage::Storage, product; initial_inventory::Real=0,
                                             unit_handling_cost::Real=0,
-                                            unit_holding_cost::Real=0, 
-                                            maximum_throughput::Float64=Inf, 
-                                            additional_stock_cover::Real=0.0)
+                                            unit_holding_cost::Real=0,
+                                            maximum_throughput::Float64=Inf,
+                                            additional_stock_cover::Real=0.0,
+                                            maximum_units::Real=Inf,
+                                            overflow_unit_cost::Real=0.0)
 
 Indicates that a storage can store a product.
 
@@ -91,18 +97,24 @@ The keyword arguments are:
     - `unit_handling_cost`: : the cost of handling a unit of product at the storage location
     - `unit_holding_cost`: the cost of holding a unit of product at the storage location per period
     - `maximum_throughput`: the maximum number of units of product that can be sent per period
+    - `maximum_units`: the maximum number of units of product that can be stored at the storage location at once
+    - `overflow_unit_cost`: the cost per unit per period charged when more inventory arrives than `maximum_units` allows (e.g. temporary/overflow storage); the excess is delayed rather than lost
 """
-function add_product!(storage::Storage, product; initial_inventory::Real=0, 
+function add_product!(storage::Storage, product; initial_inventory::Real=0,
                                                  unit_handling_cost::Real=0,
-                                                 unit_holding_cost::Real=0, 
-                                                 maximum_throughput::Float64=Inf, 
+                                                 unit_holding_cost::Real=0,
+                                                 maximum_throughput::Float64=Inf,
                                                  additional_stock_cover::Real=0.0,
-                                                 maximum_age::Union{Missing, Int64}=missing)
+                                                 maximum_age::Union{Missing, Int64}=missing,
+                                                 maximum_units::Real=Inf,
+                                                 overflow_unit_cost::Real=0.0)
     storage.initial_inventory[product] = initial_inventory
     storage.unit_handling_cost[product] = unit_handling_cost
     storage.unit_holding_cost[product] = unit_holding_cost
     storage.maximum_throughput[product] = maximum_throughput
     storage.additional_stock_cover[product] = additional_stock_cover
+    storage.maximum_units[product] = maximum_units
+    storage.overflow_unit_cost[product] = overflow_unit_cost
     if !ismissing(maximum_age)
         storage.maximum_age[product] = maximum_age
     end
@@ -130,5 +142,18 @@ function get_maximum_age(node, product)
         return node.maximum_age[product]
     else
         return Inf
+    end
+end
+
+"""
+    get_overflow_cost(node, product)
+
+Gets the per-unit-per-period cost charged for inventory that exceeds `maximum_units` and must be held in temporary overflow storage.
+"""
+function get_overflow_cost(node, product)
+    if(haskey(node.overflow_unit_cost, product))
+        return node.overflow_unit_cost[product]
+    else
+        return 0.0
     end
 end

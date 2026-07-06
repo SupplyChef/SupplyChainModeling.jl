@@ -62,3 +62,17 @@ end
 
     true
 end
+
+@test begin
+    product = Product("product")
+    storage = Storage("storage")
+
+    # defaults: unlimited capacity, no overflow cost
+    add_product!(storage, product)
+    default_ok = get_maximum_storage(storage, product) == Inf && get_overflow_cost(storage, product) == 0.0
+
+    add_product!(storage, product; maximum_units=100, overflow_unit_cost=2.5)
+    configured_ok = get_maximum_storage(storage, product) == 100 && get_overflow_cost(storage, product) == 2.5
+
+    default_ok && configured_ok
+end
