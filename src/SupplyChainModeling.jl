@@ -52,6 +52,20 @@ abstract type Node end
 
 abstract type Transport end
 
+function _require_nonnegative(value, argname)
+    if value < 0
+        throw(DomainError(value, "$argname must be non-negative"))
+    end
+end
+
+function _check_not_duplicate(collection, item, type_name)
+    for existing in collection
+        if existing == item && existing !== item
+            throw(ArgumentError("$type_name \"$(item.name)\" already exists in the supply chain"))
+        end
+    end
+end
+
 include("VehicleType.jl")
 include("Product.jl")
 include("Location.jl")
