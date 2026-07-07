@@ -59,10 +59,8 @@ function _require_nonnegative(value, argname)
 end
 
 function _check_not_duplicate(collection, item, type_name)
-    for existing in collection
-        if existing == item && existing !== item
-            throw(ArgumentError("$type_name \"$(item.name)\" already exists in the supply chain"))
-        end
+    if item in collection
+        throw(ArgumentError("$type_name \"$(item.name)\" already exists in the supply chain"))
     end
 end
 

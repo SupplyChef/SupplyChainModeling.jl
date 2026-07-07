@@ -192,11 +192,18 @@ end
     end
 end
 
-# Re-adding the exact same instance is a no-op, not an error.
+# Re-adding a node with an already-used name errors even if it's literally the
+# same instance: nodes are compared by name alone, so there's no reliable way
+# to distinguish "the same node again" from "a different node, same name" -
+# treating both as a mistake is the safe default.
 @test begin
     network = SupplyChain(10)
     storage = Storage("DC1")
     add_storage!(network, storage)
-    add_storage!(network, storage)
-    length(network.storages) == 1
+    try
+        add_storage!(network, storage)
+        false
+    catch e
+        e isa ArgumentError
+    end
 end
