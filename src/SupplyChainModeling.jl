@@ -35,6 +35,7 @@ export get_initial_inventory
 export get_maximum_storage
 export get_maximum_throughput
 export get_maximum_age
+export get_overflow_cost
 export get_arrivals
 export get_lanes_between
 export get_lanes_in
