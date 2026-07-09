@@ -3,6 +3,7 @@ A plant.
 """
 struct Plant <: Node
     name::String
+    id::Int
 
     fixed_cost::Float64
 
@@ -25,14 +26,14 @@ struct Plant <: Node
     Creates a new plant.
     """
     function Plant(name::String, location::Location; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf, initial_opened::Bool=true, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false)
-        return new(name, fixed_cost, opening_cost, closing_cost, initial_opened, must_be_opened_at_end, must_be_closed_at_end, 
-            Dict{Product, Dict{Product, Float64}}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(), 
+        return new(name, _next_id!(), fixed_cost, opening_cost, closing_cost, initial_opened, must_be_opened_at_end, must_be_closed_at_end,
+            Dict{Product, Dict{Product, Float64}}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(),
             location)
     end
 end
 
-Base.:(==)(x::Plant, y::Plant) = x.name == y.name 
-Base.hash(x::Plant, h::UInt64) = hash(x.name, h)
+Base.:(==)(x::Plant, y::Plant) = x.id == y.id
+Base.hash(x::Plant, h::UInt64) = hash(x.id, h)
 Base.show(io::IO, x::Plant) = print(io, x.name)
 
 """

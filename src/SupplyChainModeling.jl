@@ -52,6 +52,18 @@ abstract type Node end
 
 abstract type Transport end
 
+# Monotonically increasing id assigned to each Product/Node on construction.
+# `hash`/`==` for these types are defined in terms of this id rather than
+# their `name::String`, so that Dict/Set operations (which are on the hot
+# path for every inventory access) hash a cheap Int instead of re-hashing a
+# String on every lookup.
+let _id_counter = Ref(0)
+    global function _next_id!()::Int
+        _id_counter[] += 1
+        return _id_counter[]
+    end
+end
+
 include("VehicleType.jl")
 include("Product.jl")
 include("Location.jl")

@@ -3,6 +3,7 @@ A storage location.
 """
 struct Storage <: Node
     name::String
+    id::Int
 
     fixed_cost::Float64
     
@@ -37,17 +38,18 @@ struct Storage <: Node
                      initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
                      #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
         return new(name,
-                   fixed_cost, opening_cost, closing_cost, 
-                   initial_opened, 
+                   _next_id!(),
+                   fixed_cost, opening_cost, closing_cost,
+                   initial_opened,
                    Dict{Product, Float64}(),
                    false,#must_be_opened_at_end,
-                   false,#must_be_closed_at_end, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   maximum_overall_throughput, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
+                   false,#must_be_closed_at_end,
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
+                   maximum_overall_throughput,
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
                    location,
                    Dict{Product, Int64}(),
                    Dict{Product, Float64}())
@@ -60,25 +62,26 @@ struct Storage <: Node
                      initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
                      #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
         return new(name,
-                   fixed_cost, opening_cost, closing_cost, 
-                   initial_opened, 
+                   _next_id!(),
+                   fixed_cost, opening_cost, closing_cost,
+                   initial_opened,
                    Dict{Product, Float64}(),
                    false,#must_be_opened_at_end,
-                   false,#must_be_closed_at_end, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   maximum_overall_throughput, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
+                   false,#must_be_closed_at_end,
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
+                   maximum_overall_throughput,
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
                    missing,
                    Dict{Product, Int64}(),
                    Dict{Product, Float64}())
     end
 end
 
-Base.:(==)(x::Storage, y::Storage) = x.name == y.name 
-Base.hash(x::Storage, h::UInt64) = hash(x.name, h)
+Base.:(==)(x::Storage, y::Storage) = x.id == y.id
+Base.hash(x::Storage, h::UInt64) = hash(x.id, h)
 Base.show(io::IO, x::Storage) = print(io, x.name)
 
 """

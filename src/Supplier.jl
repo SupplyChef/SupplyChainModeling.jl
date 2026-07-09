@@ -3,6 +3,7 @@ A supplier.
 """
 struct Supplier <: Node
     name::String
+    id::Int
 
     unit_cost::Dict{Product, Float64}
 
@@ -14,19 +15,19 @@ struct Supplier <: Node
     Creates a new supplier.
     """
     function Supplier(name::String, location::Location)
-        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), location)
+        return new(name, _next_id!(), Dict{Product, Float64}(), Dict{Product, Float64}(), location)
     end
 
     """
     Creates a new supplier.
     """
     function Supplier(name::String)
-        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), missing)
+        return new(name, _next_id!(), Dict{Product, Float64}(), Dict{Product, Float64}(), missing)
     end
 end
 
-Base.:(==)(x::Supplier, y::Supplier) = x.name == y.name 
-Base.hash(x::Supplier, h::UInt64) = hash(x.name, h)
+Base.:(==)(x::Supplier, y::Supplier) = x.id == y.id
+Base.hash(x::Supplier, h::UInt64) = hash(x.id, h)
 Base.show(io::IO, x::Supplier) = print(io, x.name)
 
 """
