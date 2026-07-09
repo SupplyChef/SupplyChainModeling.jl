@@ -61,15 +61,21 @@ let _id_counter = Ref(0)
     global function _next_id!()::Int
         _id_counter[] += 1
         return _id_counter[]
-    
+    end
+end
+
 function _require_nonnegative(value, argname)
     if value < 0
         throw(DomainError(value, "$argname must be non-negative"))
     end
 end
 
+# Checks by name rather than plain Set membership: since Product/Node equality
+# is now id-based (see _next_id! above), every freshly-constructed object has
+# a unique id and would never be considered "in" the collection even if it
+# reuses an already-used name, silently defeating this check.
 function _check_not_duplicate(collection, item, type_name)
-    if item in collection
+    if any(existing -> existing.name == item.name, collection)
         throw(ArgumentError("$type_name \"$(item.name)\" already exists in the supply chain"))
     end
 end
