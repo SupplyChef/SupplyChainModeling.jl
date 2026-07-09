@@ -20,11 +20,14 @@ struct Lane <: Transport
                                              unit_cost=0.0, 
                                              minimum_quantity=0.0, 
                                              time::Int=0, 
-                                             initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Int, 1}}}, 
+                                             initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Int, 1}}},
                                              can_ship=nothing::Union{Nothing, Array{Bool, 1}})
+        _require_nonnegative(fixed_cost, "fixed_cost")
+        _require_nonnegative(unit_cost, "unit_cost")
+        _require_nonnegative(minimum_quantity, "minimum_quantity")
         return new(id,
-                   origin, 
-                   [destination], 
+                   origin,
+                   [destination],
                    fixed_cost, 
                    unit_cost, 
                    minimum_quantity, 
@@ -38,11 +41,14 @@ struct Lane <: Transport
                                                      unit_cost=0.0, 
                                                      minimum_quantity=0.0, 
                                                      times=nothing::Union{Nothing, Array{Int, 1}}, 
-                                                     initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Array{Int, 1}, 1}}}, 
+                                                     initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Array{Int, 1}, 1}}},
                                                      can_ship=nothing::Union{Nothing, Array{Bool, 1}}) where N <: Node
+        _require_nonnegative(fixed_cost, "fixed_cost")
+        _require_nonnegative(unit_cost, "unit_cost")
+        _require_nonnegative(minimum_quantity, "minimum_quantity")
         return new(id,
-                   origin, 
-                   destinations, 
+                   origin,
+                   destinations,
                    fixed_cost, 
                    unit_cost, 
                    minimum_quantity, 

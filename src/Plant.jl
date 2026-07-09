@@ -26,6 +26,9 @@ struct Plant <: Node
     Creates a new plant.
     """
     function Plant(name::String, location::Location; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf, initial_opened::Bool=true, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false)
+        _require_nonnegative(fixed_cost, "fixed_cost")
+        _require_nonnegative(opening_cost, "opening_cost")
+        _require_nonnegative(closing_cost, "closing_cost")
         return new(name, _next_id!(), fixed_cost, opening_cost, closing_cost, initial_opened, must_be_opened_at_end, must_be_closed_at_end,
             Dict{Product, Dict{Product, Float64}}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(),
             location)
@@ -49,6 +52,9 @@ The keyword arguments are:
 
 """
 function add_product!(plant::Plant, product; bill_of_material::Dict{Product, Float64}, unit_cost=0.0, maximum_throughput::Real=Inf, time::Int=0)
+    _require_nonnegative(unit_cost, "unit_cost")
+    _require_nonnegative(maximum_throughput, "maximum_throughput")
+    _require_nonnegative(time, "time")
     plant.bill_of_material[product] = bill_of_material
     plant.unit_cost[product] = unit_cost
     plant.maximum_throughput[product] = maximum_throughput

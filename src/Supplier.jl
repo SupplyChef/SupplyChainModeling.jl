@@ -41,6 +41,8 @@ The keyword arguments are:
 
 """
 function add_product!(supplier::Supplier, product; unit_cost::Real, maximum_throughput::Real=Inf)
+    _require_nonnegative(unit_cost, "unit_cost")
+    _require_nonnegative(maximum_throughput, "maximum_throughput")
     supplier.unit_cost[product] = unit_cost
     supplier.maximum_throughput[product] = maximum_throughput
 end

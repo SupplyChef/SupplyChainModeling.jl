@@ -34,9 +34,12 @@ struct Storage <: Node
     """
     Creates a new storage location.
     """
-    function Storage(name::String, location::Location; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf, 
+    function Storage(name::String, location::Location; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf,
                      initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
                      #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
+        _require_nonnegative(fixed_cost, "fixed_cost")
+        _require_nonnegative(opening_cost, "opening_cost")
+        _require_nonnegative(closing_cost, "closing_cost")
         return new(name,
                    _next_id!(),
                    fixed_cost, opening_cost, closing_cost,
@@ -61,6 +64,9 @@ struct Storage <: Node
     function Storage(name::String; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf,
                      initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
                      #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
+        _require_nonnegative(fixed_cost, "fixed_cost")
+        _require_nonnegative(opening_cost, "opening_cost")
+        _require_nonnegative(closing_cost, "closing_cost")
         return new(name,
                    _next_id!(),
                    fixed_cost, opening_cost, closing_cost,
@@ -111,6 +117,13 @@ function add_product!(storage::Storage, product; initial_inventory::Real=0,
                                                  maximum_age::Union{Missing, Int64}=missing,
                                                  maximum_units::Real=Inf,
                                                  overflow_unit_cost::Real=0.0)
+    _require_nonnegative(initial_inventory, "initial_inventory")
+    _require_nonnegative(unit_handling_cost, "unit_handling_cost")
+    _require_nonnegative(unit_holding_cost, "unit_holding_cost")
+    _require_nonnegative(maximum_throughput, "maximum_throughput")
+    _require_nonnegative(additional_stock_cover, "additional_stock_cover")
+    _require_nonnegative(maximum_units, "maximum_units")
+    _require_nonnegative(overflow_unit_cost, "overflow_unit_cost")
     storage.initial_inventory[product] = initial_inventory
     storage.unit_handling_cost[product] = unit_handling_cost
     storage.unit_holding_cost[product] = unit_holding_cost
