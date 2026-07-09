@@ -54,6 +54,8 @@ function add_demand!(supply_chain, customer, product, demand::Array{R, 1}; sales
     if service_level < 0.0 || service_level > 1.0
         throw(DomainError("service_level must be between 0.0 and 1.0 inclusive"))
     end
+    _require_nonnegative(sales_price, "sales_price")
+    _require_nonnegative(lost_sales_cost, "lost_sales_cost")
     add_demand!(supply_chain, Demand(customer, product, demand; sales_price=sales_price, lost_sales_cost=lost_sales_cost, service_level=service_level))
 end
 
@@ -76,6 +78,7 @@ end
 Adds a product to the supply chain.
 """
 function add_product!(supply_chain::SupplyChain, product)
+    _check_not_duplicate(supply_chain.products, product, "Product")
     push!(supply_chain.products, product)
     return product
 end
@@ -87,6 +90,7 @@ end
 Adds a customer to the supply chain.
 """
 function add_customer!(supply_chain::SupplyChain, customer)
+    _check_not_duplicate(supply_chain.customers, customer, "Customer")
     push!(supply_chain.customers, customer)
     return customer
 end
@@ -97,6 +101,7 @@ end
 Adds a supplier to the supply chain.
 """
 function add_supplier!(supply_chain::SupplyChain, supplier)
+    _check_not_duplicate(supply_chain.suppliers, supplier, "Supplier")
     push!(supply_chain.suppliers, supplier)
     return supplier
 end
@@ -107,6 +112,7 @@ end
 Adds a storage location to the supply chain.
 """
 function add_storage!(supply_chain::SupplyChain, storage)
+    _check_not_duplicate(supply_chain.storages, storage, "Storage")
     push!(supply_chain.storages, storage)
     return storage
 end
@@ -117,6 +123,7 @@ end
 Adds a plant to the supply chain.
 """
 function add_plant!(supply_chain::SupplyChain, plant)
+    _check_not_duplicate(supply_chain.plants, plant, "Plant")
     push!(supply_chain.plants, plant)
     return plant
 end
