@@ -10,23 +10,26 @@ struct Supplier <: Node
 
     location::Union{Location, Missing}
 
+    # hash(name), precomputed once at construction - see Product.name_hash.
+    name_hash::UInt64
+
     """
     Creates a new supplier.
     """
     function Supplier(name::String, location::Location)
-        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), location)
+        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), location, hash(name))
     end
 
     """
     Creates a new supplier.
     """
     function Supplier(name::String)
-        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), missing)
+        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), missing, hash(name))
     end
 end
 
 Base.:(==)(x::Supplier, y::Supplier) = x.name == y.name 
-Base.hash(x::Supplier, h::UInt64) = hash(x.name, h)
+Base.hash(x::Supplier, h::UInt64) = hash(x.name_hash, h)
 Base.show(io::IO, x::Supplier) = print(io, x.name)
 
 """

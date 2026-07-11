@@ -21,6 +21,9 @@ struct Plant <: Node
     
     location::Location
 
+    # hash(name), precomputed once at construction - see Product.name_hash.
+    name_hash::UInt64
+
     """
     Creates a new plant.
     """
@@ -30,12 +33,12 @@ struct Plant <: Node
         _require_nonnegative(closing_cost, "closing_cost")
         return new(name, fixed_cost, opening_cost, closing_cost, initial_opened, must_be_opened_at_end, must_be_closed_at_end,
             Dict{Product, Dict{Product, Float64}}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(), 
-            location)
+            location, hash(name))
     end
 end
 
 Base.:(==)(x::Plant, y::Plant) = x.name == y.name 
-Base.hash(x::Plant, h::UInt64) = hash(x.name, h)
+Base.hash(x::Plant, h::UInt64) = hash(x.name_hash, h)
 Base.show(io::IO, x::Plant) = print(io, x.name)
 
 """

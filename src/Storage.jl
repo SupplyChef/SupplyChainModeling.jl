@@ -30,6 +30,9 @@ struct Storage <: Node
 
     overflow_unit_cost::Dict{Product, Float64}
 
+    # hash(name), precomputed once at construction - see Product.name_hash.
+    name_hash::UInt64
+
     """
     Creates a new storage location.
     """
@@ -53,7 +56,8 @@ struct Storage <: Node
                    Dict{Product, Float64}(), 
                    location,
                    Dict{Product, Int64}(),
-                   Dict{Product, Float64}())
+                   Dict{Product, Float64}(),
+                   hash(name))
     end
 
     """
@@ -79,12 +83,13 @@ struct Storage <: Node
                    Dict{Product, Float64}(), 
                    missing,
                    Dict{Product, Int64}(),
-                   Dict{Product, Float64}())
+                   Dict{Product, Float64}(),
+                   hash(name))
     end
 end
 
-Base.:(==)(x::Storage, y::Storage) = x.name == y.name 
-Base.hash(x::Storage, h::UInt64) = hash(x.name, h)
+Base.:(==)(x::Storage, y::Storage) = x.name == y.name
+Base.hash(x::Storage, h::UInt64) = hash(x.name_hash, h)
 Base.show(io::IO, x::Storage) = print(io, x.name)
 
 """

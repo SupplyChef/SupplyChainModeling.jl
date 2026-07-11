@@ -1,19 +1,46 @@
 
 const zero1 = [0]
 
+# Hash matching Lane's Base.:(==) (below): the id alone when present,
+# otherwise origin/destinations/times. Written as loops rather than
+# sum-over-generator to avoid allocating a closure per call.
+function _lane_hash(id::Union{Missing, String}, origin, destinations, times)::UInt64
+    if !ismissing(id)
+        return hash(id)
+    end
+    acc = zero(UInt64)
+    for destination in destinations
+        acc += hash(destination)
+    end
+    for time in times
+        acc += hash(time)
+    end
+    return hash(origin, acc)
+end
+
 """
 A transportation lane between two or more nodes of the supply chain.
 """
 struct Lane <: Transport
     id::Union{Missing, String}
     origin::Node
-    destinations::Array{<: Node, 1}
+    # Concretely Vector{Node} (not `Array{<:Node, 1}`, a UnionAll): the
+    # latter made the field itself abstractly typed, forcing dynamic
+    # dispatch on every access - see Env.sorted_locations for the same fix.
+    destinations::Vector{Node}
     fixed_cost::Float64
     unit_cost::Float64
     minimum_quantity::Float64
     times::Array{Int, 1}
     initial_arrivals::Union{Nothing, Dict{Product, Array{Array{Int64, 1}, 1}}} # for each time, for each destination the amount arriving
     can_ship::Union{Nothing, Array{Bool, 1}}
+
+    # Precomputed hash over the same fields Base.:(==) compares (id if
+    # present, else origin/destinations/times). Lanes key the policy and
+    # departure dicts consulted throughout a simulation, and every field is
+    # immutable, so hash once at construction instead of walking origin +
+    # every destination + every time on each lookup.
+    lane_hash::UInt64
 
     function Lane(origin, destination::Node; id::Union{Missing, String}=missing,
                                              fixed_cost=0.0, 
@@ -25,15 +52,18 @@ struct Lane <: Transport
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(unit_cost, "unit_cost")
         _require_nonnegative(minimum_quantity, "minimum_quantity")
+        destinations = Node[destination]
+        times = (time == 0) ? zero1 : [time]
         return new(id,
                    origin,
-                   [destination],
-                   fixed_cost, 
-                   unit_cost, 
-                   minimum_quantity, 
-                   (time == 0) ? zero1 : [time], 
-                   isnothing(initial_arrivals) ? initial_arrivals : Dict([p => [[ia[t]] for t in eachindex(ia)] for (p, ia) in initial_arrivals]), 
-                   can_ship)
+                   destinations,
+                   fixed_cost,
+                   unit_cost,
+                   minimum_quantity,
+                   times,
+                   isnothing(initial_arrivals) ? initial_arrivals : Dict([p => [[ia[t]] for t in eachindex(ia)] for (p, ia) in initial_arrivals]),
+                   can_ship,
+                   _lane_hash(id, origin, destinations, times))
     end
 
     function Lane(origin, destinations::Array{N, 1}; id::Union{Missing, String}=missing,
@@ -46,15 +76,18 @@ struct Lane <: Transport
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(unit_cost, "unit_cost")
         _require_nonnegative(minimum_quantity, "minimum_quantity")
+        lane_times = isnothing(times) ? zeros(Int, length(destinations)) : times
+        node_destinations = convert(Vector{Node}, destinations)
         return new(id,
                    origin,
-                   destinations,
-                   fixed_cost, 
-                   unit_cost, 
-                   minimum_quantity, 
-                   isnothing(times) ? zeros(Int, length(destinations)) : times, 
-                   initial_arrivals, 
-                   can_ship)
+                   node_destinations,
+                   fixed_cost,
+                   unit_cost,
+                   minimum_quantity,
+                   lane_times,
+                   initial_arrivals,
+                   can_ship,
+                   _lane_hash(id, origin, node_destinations, lane_times))
     end
 end
 
@@ -65,17 +98,18 @@ Base.:(==)(x::Lane, y::Lane) = begin
                                     if (ismissing(x.id) && !ismissing(y.id)) || (!ismissing(x.id) && ismissing(y.id))
                                         return false
                                     else
-                                        return (x.origin == y.origin) && length(x.destinations) == length(y.destinations) && all([x.destinations[i] == y.destinations[i] for i in 1:length(x.destinations)]) && all([x.times[i] == y.times[i] for i in 1:length(x.destinations)])
+                                        # Cheap mismatches first (precomputed hash, lengths) before
+                                        # element-by-element comparison; the loops replace the previous
+                                        # comprehensions, which allocated a temporary Bool array per call.
+                                        return x.lane_hash == y.lane_hash &&
+                                               (x.origin == y.origin) &&
+                                               length(x.destinations) == length(y.destinations) &&
+                                               all(i -> x.destinations[i] == y.destinations[i], 1:length(x.destinations)) &&
+                                               all(i -> x.times[i] == y.times[i], 1:length(x.destinations))
                                     end
                                 end
                                end
-Base.hash(x::Lane, h::UInt64) = begin
-                                 if !ismissing(x.id)
-                                    return hash(x.id, h)
-                                 else
-                                    return hash(x.origin, sum(hash(x.destinations[i], h) for i in 1:length(x.destinations)) + sum(hash(x.times[i], h) for i in 1:length(x.times)))
-                                 end
-                                end
+Base.hash(x::Lane, h::UInt64) = hash(x.lane_hash, h)
 Base.show(io::IO, x::Lane) = print(io, "$(x.origin) $(x.destinations)")
 
 """
