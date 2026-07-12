@@ -11,8 +11,8 @@ mutable struct SupplyChain
     lanes::Array{Lane, 1}
     demand::Set{Demand}
 
-    lanes_in::Dict{Node, Set{Lane}}
-    lanes_out::Dict{Node, Set{Lane}}
+    lanes_in::Dict{ConcreteNode, Set{Lane}}
+    lanes_out::Dict{ConcreteNode, Set{Lane}}
     demand_for::Dict{Tuple{Customer, Product}, Set{Demand}}
 
     optimization_model
@@ -30,8 +30,8 @@ mutable struct SupplyChain
                  Set{Plant}(), 
                  Lane[], 
                  Set{Demand}(),
-                 Dict{Node, Set{Lane}}(), 
-                 Dict{Node, Set{Lane}}(),
+                 Dict{ConcreteNode, Set{Lane}}(),
+                 Dict{ConcreteNode, Set{Lane}}(),
                  Dict{Tuple{Customer, Product}, Set{Demand}}(),
                  nothing,
                  discount_factor)

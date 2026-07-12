@@ -23,11 +23,14 @@ A transportation lane between two or more nodes of the supply chain.
 """
 struct Lane <: Transport
     id::Union{Missing, String}
-    origin::Node
-    # Concretely Vector{Node} (not `Array{<:Node, 1}`, a UnionAll): the
-    # latter made the field itself abstractly typed, forcing dynamic
+    # ConcreteNode (not the open abstract Node): lets dispatch on
+    # origin/destinations union-split into a handful of concrete branches
+    # instead of a fully dynamic call - see SupplyChainModeling.ConcreteNode.
+    origin::ConcreteNode
+    # Concretely Vector{ConcreteNode} (not `Array{<:Node, 1}`, a UnionAll):
+    # the latter made the field itself abstractly typed, forcing dynamic
     # dispatch on every access - see Env.sorted_locations for the same fix.
-    destinations::Vector{Node}
+    destinations::Vector{ConcreteNode}
     fixed_cost::Float64
     unit_cost::Float64
     minimum_quantity::Float64
@@ -42,17 +45,17 @@ struct Lane <: Transport
     # every destination + every time on each lookup.
     lane_hash::UInt64
 
-    function Lane(origin, destination::Node; id::Union{Missing, String}=missing,
-                                             fixed_cost=0.0, 
-                                             unit_cost=0.0, 
-                                             minimum_quantity=0.0, 
-                                             time::Int=0, 
+    function Lane(origin, destination::ConcreteNode; id::Union{Missing, String}=missing,
+                                             fixed_cost=0.0,
+                                             unit_cost=0.0,
+                                             minimum_quantity=0.0,
+                                             time::Int=0,
                                              initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Int, 1}}},
                                              can_ship=nothing::Union{Nothing, Array{Bool, 1}})
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(unit_cost, "unit_cost")
         _require_nonnegative(minimum_quantity, "minimum_quantity")
-        destinations = Node[destination]
+        destinations = ConcreteNode[destination]
         times = (time == 0) ? zero1 : [time]
         return new(id,
                    origin,
@@ -72,12 +75,12 @@ struct Lane <: Transport
                                                      minimum_quantity=0.0, 
                                                      times=nothing::Union{Nothing, Array{Int, 1}}, 
                                                      initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Array{Int, 1}, 1}}},
-                                                     can_ship=nothing::Union{Nothing, Array{Bool, 1}}) where N <: Node
+                                                     can_ship=nothing::Union{Nothing, Array{Bool, 1}}) where N <: ConcreteNode
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(unit_cost, "unit_cost")
         _require_nonnegative(minimum_quantity, "minimum_quantity")
         lane_times = isnothing(times) ? zeros(Int, length(destinations)) : times
-        node_destinations = convert(Vector{Node}, destinations)
+        node_destinations = convert(Vector{ConcreteNode}, destinations)
         return new(id,
                    origin,
                    node_destinations,
@@ -135,11 +138,11 @@ function get_leadtime(lane::Lane, destination::Int64)
 end
 
 """
-    get_leadtime(lane::Lane, destination::Node)
+    get_leadtime(lane::Lane, destination::ConcreteNode)
 
 Gets the lead time to reach a destination using a lane.
 """
-function get_leadtime(lane::Lane, destination::Node)
+function get_leadtime(lane::Lane, destination::ConcreteNode)
     return lane.times[findfirst(d -> d == destination, lane.destinations)]
 end
 
