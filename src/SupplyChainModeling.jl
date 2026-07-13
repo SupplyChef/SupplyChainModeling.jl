@@ -7,6 +7,7 @@ export Product
 export Demand
 
 export Node
+export ConcreteNode
 export Location
 export Customer
 export Supplier
@@ -72,6 +73,19 @@ include("Demand.jl")
 include("Plant.jl")
 include("Storage.jl")
 include("Supplier.jl")
+
+"""
+    ConcreteNode
+
+The closed set of built-in `Node` subtypes. Hot-path type signatures use
+this instead of the bare abstract `Node` so Julia can compile dispatch as a
+handful of concrete branches (union-splitting) instead of a fully dynamic
+call - `Node` itself stays open for extension, but anything typed
+`ConcreteNode` needs updating (here) if a new `Node` subtype is added and
+should participate in those dispatch-efficient paths.
+"""
+const ConcreteNode = Union{Storage, Customer, Supplier, Plant}
+
 include("Lane.jl")
 include("SupplyChain.jl")
 

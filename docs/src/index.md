@@ -12,5 +12,5 @@ pkg> add SupplyChainModeling
 
 ```@autodocs
 Modules = [SupplyChainModeling]
-Order   = [:type, :function]
+Order   = [:constant, :type, :function]
 ```
