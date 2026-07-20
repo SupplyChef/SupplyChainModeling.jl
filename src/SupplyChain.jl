@@ -1,4 +1,22 @@
 """
+    IndexedCollection{T}
+
+A stable ordering of a `SupplyChain`'s nodes/products alongside a
+`Dict{T, Int64}` mapping each one to its position in that ordering.
+
+Consumers like `SupplyChainSimulation.State` need to translate a `Storage`/
+`Product`/location object into an integer index for direct array access on
+every inventory read/write; this pairs that translation `Dict` with the
+`Vector` it was built from so both can be handed out together, computed
+once (see `get_storage_index`/`get_product_index`/`get_location_index`
+below) instead of every `State` re-deriving its own copy.
+"""
+struct IndexedCollection{T}
+    items::Vector{T}
+    index::Dict{T, Int64}
+end
+
+"""
 The supply chain.
 """
 mutable struct SupplyChain
@@ -18,25 +36,87 @@ mutable struct SupplyChain
     optimization_model
     discount_factor
 
+    # Lazily computed and cached by get_storage_index/get_product_index/
+    # get_location_index below, and invalidated (reset to nothing) by every
+    # add_storage!/add_product!/add_customer!/add_supplier! call so they
+    # never go stale. Every consumer of a SupplyChain (State/Env in
+    # SupplyChainSimulation.jl) treats it as read-only once simulation
+    # starts, so in practice each of these gets computed once per network
+    # and then reused by every State built from it, instead of every State
+    # independently re-enumerating the same Sets into an identical Dict.
+    _storage_index::Union{Nothing, IndexedCollection{Storage}}
+    _product_index::Union{Nothing, IndexedCollection{Product}}
+    _location_index::Union{Nothing, IndexedCollection{ConcreteNode}}
+
     """
     Creates a new supply chain.
     """
     function SupplyChain(horizon=1; discount_factor=1.0)
-        sc = new(horizon, 
-                 Set{Product}(), 
+        sc = new(horizon,
+                 Set{Product}(),
                  Set{Storage}(),
                  Set{Supplier}(),
-                 Set{Customer}(), 
-                 Set{Plant}(), 
-                 Lane[], 
+                 Set{Customer}(),
+                 Set{Plant}(),
+                 Lane[],
                  Set{Demand}(),
                  Dict{ConcreteNode, Set{Lane}}(),
                  Dict{ConcreteNode, Set{Lane}}(),
                  Dict{Tuple{Customer, Product}, Set{Demand}}(),
                  nothing,
-                 discount_factor)
+                 discount_factor,
+                 nothing,
+                 nothing,
+                 nothing)
         return sc
     end
+end
+
+"""
+    get_storage_index(supply_chain::SupplyChain)::IndexedCollection{Storage}
+
+Gets `supply_chain.storages` as a stable `Vector` paired with a
+`Dict{Storage, Int64}` index into it, computed once and cached (see
+`IndexedCollection`).
+"""
+function get_storage_index(supply_chain::SupplyChain)
+    if isnothing(supply_chain._storage_index)
+        items = collect(supply_chain.storages)
+        supply_chain._storage_index = IndexedCollection(items, Dict{Storage, Int64}(s => i for (i, s) in enumerate(items)))
+    end
+    return supply_chain._storage_index
+end
+
+"""
+    get_product_index(supply_chain::SupplyChain)::IndexedCollection{Product}
+
+Gets `supply_chain.products` as a stable `Vector` paired with a
+`Dict{Product, Int64}` index into it, computed once and cached (see
+`IndexedCollection`).
+"""
+function get_product_index(supply_chain::SupplyChain)
+    if isnothing(supply_chain._product_index)
+        items = collect(supply_chain.products)
+        supply_chain._product_index = IndexedCollection(items, Dict{Product, Int64}(p => i for (i, p) in enumerate(items)))
+    end
+    return supply_chain._product_index
+end
+
+"""
+    get_location_index(supply_chain::SupplyChain)::IndexedCollection{ConcreteNode}
+
+Gets every `Storage`/`Customer`/`Supplier` in `supply_chain` (`Plant`s are
+not a "location" in this sense - see `get_locations` in
+SupplyChainSimulation.jl) as a stable `Vector` paired with a
+`Dict{ConcreteNode, Int64}` index into it, computed once and cached (see
+`IndexedCollection`).
+"""
+function get_location_index(supply_chain::SupplyChain)
+    if isnothing(supply_chain._location_index)
+        items = collect(ConcreteNode, union(supply_chain.storages, supply_chain.customers, supply_chain.suppliers))
+        supply_chain._location_index = IndexedCollection(items, Dict{ConcreteNode, Int64}(l => i for (i, l) in enumerate(items)))
+    end
+    return supply_chain._location_index
 end
 
 """
@@ -80,6 +160,7 @@ Adds a product to the supply chain.
 function add_product!(supply_chain::SupplyChain, product)
     _check_not_duplicate(supply_chain.products, product, "Product")
     push!(supply_chain.products, product)
+    supply_chain._product_index = nothing
     return product
 end
 
@@ -92,6 +173,7 @@ Adds a customer to the supply chain.
 function add_customer!(supply_chain::SupplyChain, customer)
     _check_not_duplicate(supply_chain.customers, customer, "Customer")
     push!(supply_chain.customers, customer)
+    supply_chain._location_index = nothing
     return customer
 end
 
@@ -103,6 +185,7 @@ Adds a supplier to the supply chain.
 function add_supplier!(supply_chain::SupplyChain, supplier)
     _check_not_duplicate(supply_chain.suppliers, supplier, "Supplier")
     push!(supply_chain.suppliers, supplier)
+    supply_chain._location_index = nothing
     return supplier
 end
 
@@ -114,6 +197,8 @@ Adds a storage location to the supply chain.
 function add_storage!(supply_chain::SupplyChain, storage)
     _check_not_duplicate(supply_chain.storages, storage, "Storage")
     push!(supply_chain.storages, storage)
+    supply_chain._storage_index = nothing
+    supply_chain._location_index = nothing
     return storage
 end
 
