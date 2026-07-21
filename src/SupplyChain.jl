@@ -37,16 +37,18 @@ mutable struct SupplyChain
     discount_factor
 
     # Lazily computed and cached by get_storage_index/get_product_index/
-    # get_location_index below, and invalidated (reset to nothing) by every
-    # add_storage!/add_product!/add_customer!/add_supplier! call so they
-    # never go stale. Every consumer of a SupplyChain (State/Env in
-    # SupplyChainSimulation.jl) treats it as read-only once simulation
-    # starts, so in practice each of these gets computed once per network
-    # and then reused by every State built from it, instead of every State
-    # independently re-enumerating the same Sets into an identical Dict.
+    # get_location_index/get_lane_index below, and invalidated (reset to
+    # nothing) by every add_storage!/add_product!/add_customer!/
+    # add_supplier!/add_lane! call so they never go stale. Every consumer of
+    # a SupplyChain (State/Env in SupplyChainSimulation.jl) treats it as
+    # read-only once simulation starts, so in practice each of these gets
+    # computed once per network and then reused by every State/Env built
+    # from it, instead of every State/Env independently re-enumerating the
+    # same Sets/Array into an identical Dict.
     _storage_index::Union{Nothing, IndexedCollection{Storage}}
     _product_index::Union{Nothing, IndexedCollection{Product}}
     _location_index::Union{Nothing, IndexedCollection{ConcreteNode}}
+    _lane_index::Union{Nothing, IndexedCollection{Lane}}
 
     """
     Creates a new supply chain.
@@ -65,6 +67,7 @@ mutable struct SupplyChain
                  Dict{Tuple{Customer, Product}, Set{Demand}}(),
                  nothing,
                  discount_factor,
+                 nothing,
                  nothing,
                  nothing,
                  nothing)
@@ -117,6 +120,28 @@ function get_location_index(supply_chain::SupplyChain)
         supply_chain._location_index = IndexedCollection(items, Dict{ConcreteNode, Int64}(l => i for (i, l) in enumerate(items)))
     end
     return supply_chain._location_index
+end
+
+"""
+    get_lane_index(supply_chain::SupplyChain)::IndexedCollection{Lane}
+
+Gets `supply_chain.lanes` paired with a `Dict{Lane, Int64}` index into it,
+computed once and cached (see `IndexedCollection`).
+
+Unlike `get_storage_index`/`get_product_index`/`get_location_index`,
+`supply_chain.lanes` is already a stable, insertion-ordered `Array` (not a
+`Set`), so `items` below is a `copy()` of it rather than a `collect()` of
+some other backing container - taken so the cached `IndexedCollection` stays
+an immutable snapshot decoupled from `supply_chain.lanes` (which
+`add_lane!` mutates in place with `push!`), same as the other three
+indices' relationship to the `Set`s they're built from.
+"""
+function get_lane_index(supply_chain::SupplyChain)
+    if isnothing(supply_chain._lane_index)
+        items = copy(supply_chain.lanes)
+        supply_chain._lane_index = IndexedCollection(items, Dict{Lane, Int64}(l => i for (i, l) in enumerate(items)))
+    end
+    return supply_chain._lane_index
 end
 
 """
@@ -220,6 +245,7 @@ Adds a transportation lane to the supply chain.
 """
 function add_lane!(supply_chain::SupplyChain, lane::Lane)
     push!(supply_chain.lanes, lane)
+    supply_chain._lane_index = nothing
 
     for destination in lane.destinations
         if !haskey(supply_chain.lanes_in, destination)
