@@ -5,6 +5,7 @@ export IndexedCollection
 export get_storage_index
 export get_product_index
 export get_location_index
+export get_lane_index
 
 export Product
 
