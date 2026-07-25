@@ -72,15 +72,15 @@ function _check_not_duplicate(collection, item, type_name)
     end
 end
 
-"""
-    @name_identity(T)
-
-Defines `Base.:(==)`, `Base.hash`, and `Base.show` for `T` in terms of its
-`name`/`name_hash` fields - the identity convention shared by every
-name-keyed type in this package (`Customer`, `Plant`, `Product`, `Storage`,
-`Supplier`). `Lane` is the one exception, since two lanes can be equal
-without sharing a name (see `Lane`'s own `Base.:(==)`).
-"""
+# Defines Base.:(==)/Base.hash/Base.show for T in terms of its name/name_hash
+# fields - the identity convention shared by every name-keyed type in this
+# package (Customer, Plant, Product, Storage, Supplier). Lane is the one
+# exception, since two lanes can be equal without sharing a name (see Lane's
+# own Base.:(==)). Not exported/documented like _require_nonnegative and
+# _check_not_duplicate above: this is a private implementation-detail macro,
+# not part of the public API - a docstring here would need :macro added to
+# docs/src/index.md's @autodocs Order for Documenter's missing_docs check to
+# find it referenced anywhere, for no benefit to users.
 macro name_identity(T)
     esc(quote
         Base.:(==)(x::$T, y::$T) = x.name == y.name
