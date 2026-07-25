@@ -16,21 +16,12 @@ struct Supplier <: Node
     """
     Creates a new supplier.
     """
-    function Supplier(name::String, location::Location)
+    function Supplier(name::String, location::Union{Location, Missing}=missing)
         return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), location, hash(name))
-    end
-
-    """
-    Creates a new supplier.
-    """
-    function Supplier(name::String)
-        return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(), missing, hash(name))
     end
 end
 
-Base.:(==)(x::Supplier, y::Supplier) = x.name == y.name 
-Base.hash(x::Supplier, h::UInt64) = hash(x.name_hash, h)
-Base.show(io::IO, x::Supplier) = print(io, x.name)
+@name_identity Supplier
 
 """
     add_product!(supplier::Supplier, product::Product; unit_cost::Float64, maximum_throughput::Float64)

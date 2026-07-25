@@ -16,6 +16,14 @@ struct IndexedCollection{T}
     index::Dict{T, Int64}
 end
 
+# Shared by get_storage_index/get_product_index/get_location_index/
+# get_lane_index below: wraps an already-collected Vector{T} together with
+# the position index built from it. Kept separate from those callers so the
+# cache-check/build/store logic isn't duplicated four times; each caller
+# still does its own collect()/copy() since what's being collected differs
+# (a single Set, a union of Sets, or an existing Array).
+_build_index(items::Vector{T}) where T = IndexedCollection(items, Dict{T, Int64}(x => i for (i, x) in enumerate(items)))
+
 """
 The supply chain.
 """
@@ -84,8 +92,7 @@ Gets `supply_chain.storages` as a stable `Vector` paired with a
 """
 function get_storage_index(supply_chain::SupplyChain)
     if isnothing(supply_chain._storage_index)
-        items = collect(supply_chain.storages)
-        supply_chain._storage_index = IndexedCollection(items, Dict{Storage, Int64}(s => i for (i, s) in enumerate(items)))
+        supply_chain._storage_index = _build_index(collect(supply_chain.storages))
     end
     return supply_chain._storage_index
 end
@@ -99,8 +106,7 @@ Gets `supply_chain.products` as a stable `Vector` paired with a
 """
 function get_product_index(supply_chain::SupplyChain)
     if isnothing(supply_chain._product_index)
-        items = collect(supply_chain.products)
-        supply_chain._product_index = IndexedCollection(items, Dict{Product, Int64}(p => i for (i, p) in enumerate(items)))
+        supply_chain._product_index = _build_index(collect(supply_chain.products))
     end
     return supply_chain._product_index
 end
@@ -117,7 +123,7 @@ SupplyChainSimulation.jl) as a stable `Vector` paired with a
 function get_location_index(supply_chain::SupplyChain)
     if isnothing(supply_chain._location_index)
         items = collect(ConcreteNode, union(supply_chain.storages, supply_chain.customers, supply_chain.suppliers))
-        supply_chain._location_index = IndexedCollection(items, Dict{ConcreteNode, Int64}(l => i for (i, l) in enumerate(items)))
+        supply_chain._location_index = _build_index(items)
     end
     return supply_chain._location_index
 end
@@ -138,8 +144,7 @@ indices' relationship to the `Set`s they're built from.
 """
 function get_lane_index(supply_chain::SupplyChain)
     if isnothing(supply_chain._lane_index)
-        items = copy(supply_chain.lanes)
-        supply_chain._lane_index = IndexedCollection(items, Dict{Lane, Int64}(l => i for (i, l) in enumerate(items)))
+        supply_chain._lane_index = _build_index(copy(supply_chain.lanes))
     end
     return supply_chain._lane_index
 end
