@@ -18,7 +18,7 @@ struct Plant <: Node
     time::Dict{Product, Int}
 
     maximum_throughput::Dict{Product, Float64}
-    
+
     location::Location
 
     # hash(name), precomputed once at construction - see Product.name_hash.
@@ -32,14 +32,12 @@ struct Plant <: Node
         _require_nonnegative(opening_cost, "opening_cost")
         _require_nonnegative(closing_cost, "closing_cost")
         return new(name, fixed_cost, opening_cost, closing_cost, initial_opened, must_be_opened_at_end, must_be_closed_at_end,
-            Dict{Product, Dict{Product, Float64}}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(), 
+            Dict{Product, Dict{Product, Float64}}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(),
             location, hash(name))
     end
 end
 
-Base.:(==)(x::Plant, y::Plant) = x.name == y.name 
-Base.hash(x::Plant, h::UInt64) = hash(x.name_hash, h)
-Base.show(io::IO, x::Plant) = print(io, x.name)
+@name_identity Plant
 
 """
     add_product!(plant::Plant, product::Product; bill_of_material::Dict{Product, Float64}, unit_cost, maximum_throughput)

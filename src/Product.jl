@@ -1,5 +1,9 @@
 """
 A product in the supply chain.
+
+`zones` are the shipping zone multipliers applied to lane costs for this
+product (see `Lane`'s `unit_cost`); it defaults to `[1.0]`, a single zone
+with no adjustment.
 """
 struct Product
     name::String
@@ -16,6 +20,4 @@ struct Product
     end
 end
 
-Base.:(==)(x::Product, y::Product) = x.name == y.name
-Base.hash(x::Product, h::UInt64) = hash(x.name_hash, h)
-Base.show(io::IO, x::Product) = print(io, x.name)
+@name_identity Product

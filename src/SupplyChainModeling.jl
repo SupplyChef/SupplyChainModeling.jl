@@ -40,6 +40,7 @@ export get_fixed_cost
 export get_initial_inventory
 export get_maximum_storage
 export get_maximum_throughput
+export get_maximum_overall_throughput
 export get_maximum_age
 export get_overflow_cost
 export get_arrivals
@@ -49,13 +50,14 @@ export get_lanes_out
 
 export get_demand
 
-import Base.isequal
-
 """
 A node of the supply chain.
 """
 abstract type Node end
 
+"""
+A means of moving product between nodes of the supply chain (see `Lane`).
+"""
 abstract type Transport end
 
 function _require_nonnegative(value, argname)
@@ -68,6 +70,23 @@ function _check_not_duplicate(collection, item, type_name)
     if item in collection
         throw(ArgumentError("$type_name \"$(item.name)\" already exists in the supply chain"))
     end
+end
+
+# Defines Base.:(==)/Base.hash/Base.show for T in terms of its name/name_hash
+# fields - the identity convention shared by every name-keyed type in this
+# package (Customer, Plant, Product, Storage, Supplier). Lane is the one
+# exception, since two lanes can be equal without sharing a name (see Lane's
+# own Base.:(==)). Not exported/documented like _require_nonnegative and
+# _check_not_duplicate above: this is a private implementation-detail macro,
+# not part of the public API - a docstring here would need :macro added to
+# docs/src/index.md's @autodocs Order for Documenter's missing_docs check to
+# find it referenced anywhere, for no benefit to users.
+macro name_identity(T)
+    esc(quote
+        Base.:(==)(x::$T, y::$T) = x.name == y.name
+        Base.hash(x::$T, h::UInt64) = hash(x.name_hash, h)
+        Base.show(io::IO, x::$T) = print(io, x.name)
+    end)
 end
 
 include("VehicleType.jl")

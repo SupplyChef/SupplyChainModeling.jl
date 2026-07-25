@@ -70,10 +70,10 @@ struct Lane <: Transport
     end
 
     function Lane(origin, destinations::Array{N, 1}; id::Union{Missing, String}=missing,
-                                                     fixed_cost=0.0, 
-                                                     unit_cost=0.0, 
-                                                     minimum_quantity=0.0, 
-                                                     times=nothing::Union{Nothing, Array{Int, 1}}, 
+                                                     fixed_cost=0.0,
+                                                     unit_cost=0.0,
+                                                     minimum_quantity=0.0,
+                                                     times=nothing::Union{Nothing, Array{Int, 1}},
                                                      initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Array{Int, 1}, 1}}},
                                                      can_ship=nothing::Union{Nothing, Array{Bool, 1}}) where N <: ConcreteNode
         _require_nonnegative(fixed_cost, "fixed_cost")
@@ -133,6 +133,13 @@ function is_destination(location, lane::Lane)::Bool
     return location ∈ get_destinations(lane)
 end
 
+"""
+    get_leadtime(lane::Lane, destination::Int64)
+
+Gets the lead time to reach the destination at the given index in `lane.destinations`.
+Prefer the `ConcreteNode`-based overload below when you have the destination itself
+rather than its index.
+"""
 function get_leadtime(lane::Lane, destination::Int64)
     return lane.times[destination]
 end
@@ -156,9 +163,9 @@ function get_fixed_cost(lane::Lane)
 end
 
 """
-    get_arrivals(lane::Lane, destination, time::Int)
+    get_arrivals(product::Product, lane::Lane, destination, time::Int)
 
-Gets the known inventory arrivals on a lane for a given time.
+Gets the known inventory arrivals of a product on a lane for a given time.
 """
 function get_arrivals(product::Product, lane::Lane, destination, time::Int)
     index = findfirst(d -> d == destination, lane.destinations)

@@ -5,7 +5,7 @@ struct Storage <: Node
     name::String
 
     fixed_cost::Float64
-    
+
     opening_cost::Float64
     closing_cost::Float64
 
@@ -21,7 +21,7 @@ struct Storage <: Node
     maximum_throughput::Dict{Product, Float64}
     maximum_overall_throughput::Float64
     maximum_units::Dict{Product, Float64}
-    
+
     additional_stock_cover::Dict{Product, Float64}
 
     location::Union{Location, Missing}
@@ -36,61 +36,32 @@ struct Storage <: Node
     """
     Creates a new storage location.
     """
-    function Storage(name::String, location::Location; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf,
-                     initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
-                     #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
+    function Storage(name::String, location::Union{Location, Missing}=missing; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf,
+                     initial_opened::Bool=true, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false,
+                     maximum_overall_throughput::Float64=Inf)
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(opening_cost, "opening_cost")
         _require_nonnegative(closing_cost, "closing_cost")
         return new(name,
-                   fixed_cost, opening_cost, closing_cost, 
-                   initial_opened, 
+                   fixed_cost, opening_cost, closing_cost,
+                   initial_opened,
                    Dict{Product, Float64}(),
-                   false,#must_be_opened_at_end,
-                   false,#must_be_closed_at_end, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   maximum_overall_throughput, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
+                   must_be_opened_at_end,
+                   must_be_closed_at_end,
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
+                   maximum_overall_throughput,
+                   Dict{Product, Float64}(),
+                   Dict{Product, Float64}(),
                    location,
-                   Dict{Product, Int64}(),
-                   Dict{Product, Float64}(),
-                   hash(name))
-    end
-
-    """
-    Creates a new storage location.
-    """
-    function Storage(name::String; fixed_cost::Real=0.0, opening_cost::Real=0.0, closing_cost::Real=Inf,
-                     initial_opened::Bool=true, maximum_overall_throughput::Float64=Inf)
-                     #, must_be_opened_at_end::Bool=false, must_be_closed_at_end::Bool=false, maximum_overall_throughput::Float64=Inf)
-        _require_nonnegative(fixed_cost, "fixed_cost")
-        _require_nonnegative(opening_cost, "opening_cost")
-        _require_nonnegative(closing_cost, "closing_cost")
-        return new(name,
-                   fixed_cost, opening_cost, closing_cost, 
-                   initial_opened, 
-                   Dict{Product, Float64}(),
-                   false,#must_be_opened_at_end,
-                   false,#must_be_closed_at_end, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   maximum_overall_throughput, 
-                   Dict{Product, Float64}(), 
-                   Dict{Product, Float64}(), 
-                   missing,
                    Dict{Product, Int64}(),
                    Dict{Product, Float64}(),
                    hash(name))
     end
 end
 
-Base.:(==)(x::Storage, y::Storage) = x.name == y.name
-Base.hash(x::Storage, h::UInt64) = hash(x.name_hash, h)
-Base.show(io::IO, x::Storage) = print(io, x.name)
+@name_identity Storage
 
 """
     add_product!(storage::Storage, product; initial_inventory::Real=0,
@@ -147,6 +118,11 @@ function get_initial_inventory(storage, product)
     return get(storage.initial_inventory, product, 0)
 end
 
+"""
+    get_maximum_storage(node, product)
+
+Gets the maximum number of units of product that can be stored at a node.
+"""
 function get_maximum_storage(node, product)
     if(haskey(node.maximum_units, product))
         return node.maximum_units[product]
@@ -155,12 +131,26 @@ function get_maximum_storage(node, product)
     end
 end
 
+"""
+    get_maximum_age(node, product)
+
+Gets the maximum age (in time periods) that a unit of product may be held at a node.
+"""
 function get_maximum_age(node, product)
     if(haskey(node.maximum_age, product))
         return node.maximum_age[product]
     else
         return Inf
     end
+end
+
+"""
+    get_maximum_overall_throughput(storage::Storage)
+
+Gets the maximum combined throughput (across all products) of a storage location.
+"""
+function get_maximum_overall_throughput(storage::Storage)
+    return storage.maximum_overall_throughput
 end
 
 """
