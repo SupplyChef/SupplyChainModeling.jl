@@ -272,3 +272,113 @@ end
     vt = VehicleType("truck", 5; maximum_capacity=[100.0], maximum_time=8.0, fixed_cost=50.0)
     vt.name == "truck" && vt.count == 5 && vt.maximum_capacity == [100.0] && vt.maximum_time == 8.0 && vt.fixed_cost == 50.0
 end
+
+# MaturationSource: linear maturation, penalty-free product registration, and the
+# all-in-all-out "at most one batch, must ship if already stocked" state captured by
+# initial_inventory/unavailable_periods (see the CIRRELT-2026-10 IPPDP use case this
+# generalizes: chick breeding -> slaughter weight).
+@test begin
+    product = Product("bird")
+    source = MaturationSource("farm1", Location(47.6, -122.3); capacity=10000, changeover_periods=3, unavailable_periods=0)
+    add_product!(source, product; initial_value=45.0, maturation_rate=25.0, target_value=2250.0,
+                                  acceptable_deviation_under=0.1, acceptable_deviation_over=0.1,
+                                  extended_deviation_under=0.05, extended_deviation_over=0.05)
+
+    has_product(source, product) &&
+        get_maturity_value(source, product, 0) == 45.0 &&
+        get_maturity_value(source, product, 10) == 45.0 + 25.0 * 10 &&
+        source.capacity == 10000 &&
+        source.changeover_periods == 3 &&
+        source.initial_inventory[product] == 0.0
+end
+
+@test begin
+    product = Product("bird")
+    other_product = Product("other")
+    source = MaturationSource("farm1", Location(47.6, -122.3); capacity=10000)
+    add_product!(source, product; initial_value=45.0, maturation_rate=25.0, target_value=2250.0,
+                                  acceptable_deviation_under=0.1, acceptable_deviation_over=0.1)
+    !has_product(source, other_product)
+end
+
+@test_throws DomainError MaturationSource("farm1", Location(47.6, -122.3); capacity=-1.0)
+@test_throws DomainError MaturationSource("farm1", Location(47.6, -122.3); changeover_periods=-1)
+@test_throws DomainError MaturationSource("farm1", Location(47.6, -122.3); unavailable_periods=-1)
+
+@test begin
+    product = Product("bird")
+    source = MaturationSource("farm1", Location(47.6, -122.3))
+    try
+        add_product!(source, product; initial_value=-1.0, maturation_rate=25.0, target_value=2250.0,
+                                      acceptable_deviation_under=0.1, acceptable_deviation_over=0.1)
+        false
+    catch e
+        e isa DomainError
+    end
+end
+
+# A source that already holds a batch (initial_inventory > 0) at the start of the
+# horizon: initial_value stands in for the batch's *current* value (not a day-old
+# value), consistent with how the IPPDP formulation reuses phi_b for both cases.
+@test begin
+    product = Product("bird")
+    source = MaturationSource("farm1", Location(47.6, -122.3); capacity=10000)
+    add_product!(source, product; initial_value=1800.0, maturation_rate=25.0, target_value=2250.0,
+                                  acceptable_deviation_under=0.1, acceptable_deviation_over=0.1,
+                                  initial_inventory=10000.0)
+    source.initial_inventory[product] == 10000.0 && get_maturity_value(source, product, 0) == 1800.0
+end
+
+# QuotaSink: a soft periodic target, not a hard cap - deviations are penalized, not forbidden.
+@test begin
+    product = Product("bird")
+    sink = QuotaSink("slaughterhouse1", Location(46.8, -71.2))
+    add_product!(sink, product; quota=50000, underproduction_unit_penalty=1.0, overproduction_unit_penalty=1.0)
+
+    has_product(sink, product) &&
+        sink.quota[product] == 50000 &&
+        sink.underproduction_unit_penalty[product] == 1.0 &&
+        sink.overproduction_unit_penalty[product] == 1.0
+end
+
+@test begin
+    product = Product("bird")
+    sink = QuotaSink("slaughterhouse1", Location(46.8, -71.2))
+    try
+        add_product!(sink, product; quota=-1.0)
+        false
+    catch e
+        e isa DomainError
+    end
+end
+
+@test begin
+    network = SupplyChain(10)
+    source = MaturationSource("farm1", Location(47.6, -122.3))
+    sink = QuotaSink("slaughterhouse1", Location(46.8, -71.2))
+    add_maturation_source!(network, source)
+    add_quota_sink!(network, sink)
+    (source in network.maturation_sources) && (sink in network.quota_sinks)
+end
+
+@test begin
+    network = SupplyChain(10)
+    add_maturation_source!(network, MaturationSource("farm1", Location(47.6, -122.3)))
+    try
+        add_maturation_source!(network, MaturationSource("farm1", Location(47.6, -122.3)))
+        false
+    catch e
+        e isa ArgumentError
+    end
+end
+
+@test begin
+    network = SupplyChain(10)
+    add_quota_sink!(network, QuotaSink("slaughterhouse1", Location(46.8, -71.2)))
+    try
+        add_quota_sink!(network, QuotaSink("slaughterhouse1", Location(46.8, -71.2)))
+        false
+    catch e
+        e isa ArgumentError
+    end
+end

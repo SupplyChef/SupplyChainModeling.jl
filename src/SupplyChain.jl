@@ -34,6 +34,8 @@ mutable struct SupplyChain
     suppliers::Set{Supplier}
     customers::Set{Customer}
     plants::Set{Plant}
+    maturation_sources::Set{MaturationSource}
+    quota_sinks::Set{QuotaSink}
     lanes::Array{Lane, 1}
     demand::Set{Demand}
 
@@ -68,6 +70,8 @@ mutable struct SupplyChain
                  Set{Supplier}(),
                  Set{Customer}(),
                  Set{Plant}(),
+                 Set{MaturationSource}(),
+                 Set{QuotaSink}(),
                  Lane[],
                  Set{Demand}(),
                  Dict{ConcreteNode, Set{Lane}}(),
@@ -241,6 +245,28 @@ function add_plant!(supply_chain::SupplyChain, plant)
     _check_not_duplicate(supply_chain.plants, plant, "Plant")
     push!(supply_chain.plants, plant)
     return plant
+end
+
+"""
+    add_maturation_source!(supply_chain, source)
+
+Adds a maturation source to the supply chain.
+"""
+function add_maturation_source!(supply_chain::SupplyChain, source)
+    _check_not_duplicate(supply_chain.maturation_sources, source, "MaturationSource")
+    push!(supply_chain.maturation_sources, source)
+    return source
+end
+
+"""
+    add_quota_sink!(supply_chain, sink)
+
+Adds a quota sink to the supply chain.
+"""
+function add_quota_sink!(supply_chain::SupplyChain, sink)
+    _check_not_duplicate(supply_chain.quota_sinks, sink, "QuotaSink")
+    push!(supply_chain.quota_sinks, sink)
+    return sink
 end
 
 """

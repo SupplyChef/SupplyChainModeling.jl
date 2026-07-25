@@ -18,6 +18,8 @@ export Customer
 export Supplier
 export Storage
 export Plant
+export MaturationSource
+export QuotaSink
 
 export Transport
 export Lane
@@ -30,6 +32,8 @@ export add_storage!
 export add_plant!
 export add_supplier!
 export add_lane!
+export add_maturation_source!
+export add_quota_sink!
 
 export can_ship
 export get_destinations
@@ -49,6 +53,9 @@ export get_lanes_in
 export get_lanes_out
 
 export get_demand
+
+export get_maturity_value
+export has_product
 
 """
 A node of the supply chain.
@@ -97,16 +104,23 @@ include("Demand.jl")
 include("Plant.jl")
 include("Storage.jl")
 include("Supplier.jl")
+include("MaturationSource.jl")
+include("QuotaSink.jl")
 
 """
     ConcreteNode
 
-The closed set of built-in `Node` subtypes. Hot-path type signatures use
-this instead of the bare abstract `Node` so Julia can compile dispatch as a
-handful of concrete branches (union-splitting) instead of a fully dynamic
-call - `Node` itself stays open for extension, but anything typed
-`ConcreteNode` needs updating (here) if a new `Node` subtype is added and
-should participate in those dispatch-efficient paths.
+The closed set of built-in `Node` subtypes that participate in the lane-based flow network
+(`Lane`, `SupplyChain.lanes_in`/`lanes_out`, `get_location_index`). Hot-path type signatures
+use this instead of the bare abstract `Node` so Julia can compile dispatch as a handful of
+concrete branches (union-splitting) instead of a fully dynamic call - `Node` itself stays open
+for extension, but anything typed `ConcreteNode` needs updating (here) if a new `Node` subtype
+is added and should participate in those dispatch-efficient paths.
+
+`MaturationSource` and `QuotaSink` are deliberately not part of this union: they connect
+through direct distance-based costing rather than `Lane`s (see
+`SupplyChainOptimization.create_maturation_scheduling_model`), so they never appear as a
+`Lane` origin/destination or in the lane-indexed dictionaries this union exists to speed up.
 """
 const ConcreteNode = Union{Storage, Customer, Supplier, Plant}
 
