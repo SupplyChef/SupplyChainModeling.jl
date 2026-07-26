@@ -329,6 +329,26 @@ end
     source.initial_inventory[product] == 10000.0 && get_maturity_value(source, product, 0) == 1800.0
 end
 
+# The advanced add_product! form accepts an arbitrary age-value curve, not just linear growth
+# toward a target - e.g. a classical shelf-life curve (constant value, unsellable past a fixed
+# age), proving MaturationSource generalizes beyond the harvest-scheduling shape.
+@test begin
+    product = Product("cheese")
+    source = MaturationSource("cave1", Location(45.4, 5.6); capacity=200)
+    add_product!(source, product,
+                 duration -> 1.0,           # value_function: constant per-unit value once ready
+                 duration -> 2 <= duration <= 5,  # feasible_duration: sellable only from day 2 to day 5
+                 duration -> 0.0)           # duration_penalty: no partial-quality penalty
+
+    has_product(source, product) &&
+        get_maturity_value(source, product, 0) == 1.0 &&
+        !source.feasible_duration[product](1) &&
+        source.feasible_duration[product](2) &&
+        source.feasible_duration[product](5) &&
+        !source.feasible_duration[product](6) &&
+        source.duration_penalty[product](3) == 0.0
+end
+
 # QuotaSink: a soft periodic target, not a hard cap - deviations are penalized, not forbidden.
 @test begin
     product = Product("bird")

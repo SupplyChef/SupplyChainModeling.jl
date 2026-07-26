@@ -1,14 +1,24 @@
 """
-A single-batch production source whose product matures at a deterministic, linear rate over
-time: a batch's value (e.g. weight) after being held for `duration` periods is
-`initial_value + maturation_rate * duration` (see [`get_maturity_value`](@ref)).
+A single-batch production source whose product's value is a function of how long it has been
+held (see [`get_maturity_value`](@ref)) - the batch's *age-value curve*. This generalizes two
+families of problems that the operations-research literature usually treats separately:
+
+ - **Perishable/deteriorating inventory** (Nahmias, 1982; Goyal and Giri, 2001): value is
+   typically flat, then drops to zero at a fixed shelf life, or decays continuously from the
+   moment of production.
+ - **Harvest/maturity scheduling** (e.g. sugarcane or wine-grape harvest scheduling: fields/grapes
+   ripen toward a peak, must be harvested within a window, and the mill/winery has a periodic
+   intake capacity): value *rises* toward an ideal window before falling off if held too long.
+
+Both are the same underlying object - a batch whose eligibility and value for shipment is
+`age_value_curve(duration)` - differing only in the curve's shape. [`add_product!`](@ref) has a
+convenient linear-growth-with-percentage-bands form for the common (harvest-scheduling-style)
+case, and a fully custom form accepting arbitrary `value`/`feasible`/`penalty` functions for
+anything else, including classical shelf-life curves.
 
 A `MaturationSource` holds at most one batch per planning horizon ("all-in-all-out"): once a
 batch is started, the source cannot start another until that batch has shipped and, optionally,
-a `changeover_periods`-long turnaround has elapsed. This generalizes livestock finishing
-(e.g. raising chicks to a target slaughter weight), aging/curing processes (cheese, wine), and
-any other grow/cure-then-ship operation where the holding duration is itself a decision that
-trades off against a quality target.
+a `changeover_periods`-long turnaround has elapsed.
 """
 struct MaturationSource <: Node
     name::String
@@ -20,15 +30,9 @@ struct MaturationSource <: Node
     changeover_periods::Int64
     unavailable_periods::Int64
 
-    initial_value::Dict{Product, Float64}
-    maturation_rate::Dict{Product, Float64}
-    target_value::Dict{Product, Float64}
-    acceptable_deviation_under::Dict{Product, Float64}
-    acceptable_deviation_over::Dict{Product, Float64}
-    extended_deviation_under::Dict{Product, Float64}
-    extended_deviation_over::Dict{Product, Float64}
-    underrun_unit_penalty::Dict{Product, Float64}
-    overrun_unit_penalty::Dict{Product, Float64}
+    value_function::Dict{Product, Function}
+    feasible_duration::Dict{Product, Function}
+    duration_penalty::Dict{Product, Function}
 
     initial_inventory::Dict{Product, Float64}
 
@@ -48,9 +52,7 @@ struct MaturationSource <: Node
         _require_nonnegative(changeover_periods, "changeover_periods")
         _require_nonnegative(unavailable_periods, "unavailable_periods")
         return new(name, location, capacity, changeover_periods, unavailable_periods,
-                   Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(),
-                   Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(), Dict{Product, Float64}(),
-                   Dict{Product, Float64}(), Dict{Product, Float64}(),
+                   Dict{Product, Function}(), Dict{Product, Function}(), Dict{Product, Function}(),
                    Dict{Product, Float64}(),
                    hash(name))
     end
@@ -59,13 +61,44 @@ end
 @name_identity MaturationSource
 
 """
+    add_product!(source::MaturationSource, product, value_function, feasible_duration, duration_penalty; initial_inventory=0.0)
+
+Advanced form of `add_product!`: registers `product` on `source` with a fully custom age-value
+curve, instead of the linear-growth-with-percentage-bands convenience form below. Useful for
+anything that form can't express - for example, a classical shelf-life curve (constant value,
+infeasible to ship past a fixed age):
+
+```julia
+add_product!(source, product,
+             duration -> 1.0,               # value_function: constant per-unit value
+             duration -> duration <= 5,      # feasible_duration: sellable for 5 periods
+             duration -> 0.0)                # duration_penalty: no partial-quality penalty
+```
+
+ - `value_function(duration)`: the batch's value after being held `duration` periods.
+ - `feasible_duration(duration)`: whether a batch may ship after being held `duration` periods.
+ - `duration_penalty(duration)`: the per-unit cost of shipping after `duration` periods (zero within the curve's ideal range).
+ - `initial_inventory`: if greater than zero, this source already holds a batch of this size at the start of the planning horizon (with current value `value_function(0)`), which must ship during the horizon rather than being a free scheduling choice.
+"""
+function add_product!(source::MaturationSource, product, value_function::Function, feasible_duration::Function, duration_penalty::Function; initial_inventory::Real=0.0)
+    _require_nonnegative(initial_inventory, "initial_inventory")
+    source.value_function[product] = value_function
+    source.feasible_duration[product] = feasible_duration
+    source.duration_penalty[product] = duration_penalty
+    source.initial_inventory[product] = initial_inventory
+end
+
+"""
     add_product!(source::MaturationSource, product; initial_value, maturation_rate, target_value,
                                                     acceptable_deviation_under, acceptable_deviation_over,
                                                     extended_deviation_under=0.0, extended_deviation_over=0.0,
                                                     underrun_unit_penalty=0.0, overrun_unit_penalty=0.0,
                                                     initial_inventory=0.0)
 
-Indicates that a `MaturationSource` can hold a batch of `product`.
+Indicates that a `MaturationSource` can hold a batch of `product`, whose value grows linearly
+while held, toward a target with percentage-based tolerance bands - a convenience over the
+fully custom `add_product!` method above, for this common case (see `MaturationSource`'s own
+docstring for the harvest-scheduling problems this shape fits).
 
 The keyword arguments are:
  - `initial_value`: the value (e.g. weight) of the product when a batch starts, or its current value if `initial_inventory` is greater than zero (i.e. a batch is already in progress at the start of the planning horizon).
@@ -90,27 +123,36 @@ function add_product!(source::MaturationSource, product; initial_value::Real, ma
     _require_nonnegative(extended_deviation_over, "extended_deviation_over")
     _require_nonnegative(underrun_unit_penalty, "underrun_unit_penalty")
     _require_nonnegative(overrun_unit_penalty, "overrun_unit_penalty")
-    _require_nonnegative(initial_inventory, "initial_inventory")
-    source.initial_value[product] = initial_value
-    source.maturation_rate[product] = maturation_rate
-    source.target_value[product] = target_value
-    source.acceptable_deviation_under[product] = acceptable_deviation_under
-    source.acceptable_deviation_over[product] = acceptable_deviation_over
-    source.extended_deviation_under[product] = extended_deviation_under
-    source.extended_deviation_over[product] = extended_deviation_over
-    source.underrun_unit_penalty[product] = underrun_unit_penalty
-    source.overrun_unit_penalty[product] = overrun_unit_penalty
-    source.initial_inventory[product] = initial_inventory
+
+    lower_extended = (1 - acceptable_deviation_under - extended_deviation_under) * target_value
+    lower_acceptable = (1 - acceptable_deviation_under) * target_value
+    upper_acceptable = (1 + acceptable_deviation_over) * target_value
+    upper_extended = (1 + acceptable_deviation_over + extended_deviation_over) * target_value
+
+    value_function = duration -> initial_value + maturation_rate * duration
+    feasible_duration = duration -> (lower_extended <= value_function(duration) <= upper_extended)
+    duration_penalty = duration -> begin
+        v = value_function(duration)
+        if lower_acceptable <= v <= upper_acceptable
+            0.0
+        elseif v < lower_acceptable
+            underrun_unit_penalty * abs(target_value - v)
+        else
+            overrun_unit_penalty * abs(target_value - v)
+        end
+    end
+
+    add_product!(source, product, value_function, feasible_duration, duration_penalty; initial_inventory=initial_inventory)
 end
 
 """
     get_maturity_value(source::MaturationSource, product, duration)
 
 Gets the expected batch value (e.g. weight) of `product` at `source` after being held for
-`duration` periods, given the source's `initial_value` and linear `maturation_rate`.
+`duration` periods, per the source's registered age-value curve (see [`add_product!`](@ref)).
 """
 function get_maturity_value(source::MaturationSource, product, duration)
-    return source.initial_value[product] + source.maturation_rate[product] * duration
+    return source.value_function[product](duration)
 end
 
 """
@@ -119,5 +161,5 @@ end
 Checks whether a `MaturationSource` is configured to hold batches of `product` (see [`add_product!`](@ref)).
 """
 function has_product(source::MaturationSource, product)
-    return haskey(source.initial_value, product)
+    return haskey(source.value_function, product)
 end
