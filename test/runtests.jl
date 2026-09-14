@@ -77,7 +77,44 @@ end
     default_ok && configured_ok
 end
 
+@test begin
+    product = Product("product")
+    other_product = Product("other_product")
+
+    network = SupplyChain()
+    add_product!(network, product)
+    add_product!(network, other_product)
+
+    # No tariff registered between CN and US yet.
+    no_tariff_yet = get_tariff_rate(network, "CN", "US", product) == 0.0
+
+    add_tariff!(network, Tariff("CN", "US", 0.25))
+    matches_registered_pair = get_tariff_rate(network, "CN", "US", product) == 0.25
+    # A product-specific rate for the same pair takes priority over the "every product" one.
+    add_tariff!(network, Tariff("CN", "US", 0.10; product=other_product))
+    wildcard_still_applies_to_product = get_tariff_rate(network, "CN", "US", product) == 0.25
+    product_specific_overrides_wildcard = get_tariff_rate(network, "CN", "US", other_product) == 0.10
+
+    # No rate registered for this pair/direction.
+    unregistered_pair_is_zero = get_tariff_rate(network, "US", "CN", product) == 0.0
+    # Same origin/destination country never incurs a tariff, even with a rate on file for it.
+    add_tariff!(network, Tariff("US", "US", 0.5))
+    same_country_is_zero = get_tariff_rate(network, "US", "US", product) == 0.0
+    # A location without a country assigned never incurs a tariff either.
+    missing_country_is_zero = get_tariff_rate(network, nothing, "US", product) == 0.0
+
+    no_tariff_yet && matches_registered_pair && wildcard_still_applies_to_product &&
+        product_specific_overrides_wildcard && unregistered_pair_is_zero &&
+        same_country_is_zero && missing_country_is_zero
+end
+
+@test begin
+    location = Location(47.6, -122.3; country="US")
+    location.country == "US"
+end
+
 # Negative costs/quantities should be rejected, not silently accepted.
+@test_throws DomainError Tariff("CN", "US", -0.1)
 @test_throws DomainError Storage("s"; fixed_cost=-1.0)
 @test_throws DomainError Storage("s"; opening_cost=-1.0)
 @test_throws DomainError Storage("s"; closing_cost=-1.0)

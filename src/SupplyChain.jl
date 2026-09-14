@@ -38,10 +38,18 @@ mutable struct SupplyChain
     quota_sinks::Set{QuotaSink}
     lanes::Array{Lane, 1}
     demand::Set{Demand}
+    tariffs::Array{Tariff, 1}
 
     lanes_in::Dict{ConcreteNode, Set{Lane}}
     lanes_out::Dict{ConcreteNode, Set{Lane}}
     demand_for::Dict{Tuple{Customer, Product}, Set{Demand}}
+    # Populated by add_tariff!, keyed (origin_country, destination_country, product)
+    # with product `nothing` meaning "every product" - the wildcard entry a
+    # specific-product lookup falls back to in get_tariff_rate below. Unlike
+    # the four _*_index fields below this is never invalidated/rebuilt: tariffs
+    # are looked up by the exact key they were inserted under, so there's
+    # nothing to recompute.
+    _tariff_rate::Dict{Tuple{String, String, Union{Nothing, Product}}, Float64}
 
     optimization_model
     discount_factor
@@ -74,9 +82,11 @@ mutable struct SupplyChain
                  Set{QuotaSink}(),
                  Lane[],
                  Set{Demand}(),
+                 Tariff[],
                  Dict{ConcreteNode, Set{Lane}}(),
                  Dict{ConcreteNode, Set{Lane}}(),
                  Dict{Tuple{Customer, Product}, Set{Demand}}(),
+                 Dict{Tuple{String, String, Union{Nothing, Product}}, Float64}(),
                  nothing,
                  discount_factor,
                  nothing,
@@ -290,6 +300,34 @@ function add_lane!(supply_chain::SupplyChain, lane::Lane)
     end
     push!(supply_chain.lanes_out[lane.origin], lane)
     return lane
+end
+
+"""
+    add_tariff!(supply_chain, tariff::Tariff)
+
+Adds a tariff to the supply chain. A second `Tariff` for the same
+`(origin_country, destination_country, product)` replaces the first.
+"""
+function add_tariff!(supply_chain::SupplyChain, tariff::Tariff)
+    push!(supply_chain.tariffs, tariff)
+    supply_chain._tariff_rate[(tariff.origin_country, tariff.destination_country, tariff.product)] = tariff.rate
+    return tariff
+end
+
+"""
+    get_tariff_rate(supply_chain, origin_country, destination_country, product)::Float64
+
+Gets the ad-valorem tariff rate (e.g. `0.25` for 25%) applied to `product`
+moving from `origin_country` to `destination_country`, falling back to a
+tariff registered for every product (see `Tariff`) between the two
+countries, or `0.0` if neither is registered.
+"""
+function get_tariff_rate(supply_chain::SupplyChain, origin_country::Union{Nothing, String}, destination_country::Union{Nothing, String}, product::Product)
+    if isnothing(origin_country) || isnothing(destination_country) || origin_country == destination_country
+        return 0.0
+    end
+    return get(supply_chain._tariff_rate, (origin_country, destination_country, product),
+               get(supply_chain._tariff_rate, (origin_country, destination_country, nothing), 0.0))
 end
 
 """
