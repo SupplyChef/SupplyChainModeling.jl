@@ -11,6 +11,10 @@ export Product
 
 export Demand
 
+export Tariff
+export add_tariff!
+export get_tariff_rate
+
 export Node
 export ConcreteNode
 export Location
@@ -98,6 +102,7 @@ end
 
 include("VehicleType.jl")
 include("Product.jl")
+include("Tariff.jl")
 include("Location.jl")
 include("Customer.jl")
 include("Demand.jl")
