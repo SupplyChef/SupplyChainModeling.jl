@@ -48,6 +48,8 @@ export get_fixed_cost
 export get_initial_inventory
 export get_maximum_storage
 export get_maximum_throughput
+export get_minimum_order_quantity
+export get_order_multiple
 export get_maximum_overall_throughput
 export get_maximum_age
 export get_overflow_cost

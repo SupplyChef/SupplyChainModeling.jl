@@ -439,3 +439,18 @@ end
         e isa ArgumentError
     end
 end
+
+# Per-product MOQ and order multiple on Supplier (defaults: no constraint).
+@test begin
+    p = Product("p"); q = Product("q")
+    s = Supplier("s")
+    add_product!(s, p; unit_cost=1.0, minimum_order_quantity=25, order_multiple=12)
+    add_product!(s, q; unit_cost=1.0)
+    get_minimum_order_quantity(s, p) == 25 && get_order_multiple(s, p) == 12 &&
+        get_minimum_order_quantity(s, q) == 0 && get_order_multiple(s, q) == 1 &&
+        get_minimum_order_quantity(s, Product("unknown")) == 0 &&
+        get_order_multiple(Storage("x"), p) == 1 && get_minimum_order_quantity(Storage("x"), p) == 0
+end
+@test_throws DomainError add_product!(Supplier("s"), Product("p"); unit_cost=1.0, minimum_order_quantity=-1)
+@test_throws DomainError add_product!(Supplier("s"), Product("p"); unit_cost=1.0, order_multiple=0)
+@test_throws DomainError add_product!(Supplier("s"), Product("p"); unit_cost=1.0, order_multiple=2.5)
