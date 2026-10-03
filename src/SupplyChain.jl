@@ -54,6 +54,16 @@ mutable struct SupplyChain
     optimization_model
     discount_factor
 
+    # Cost of capital as a rate per period (e.g. 0.01 for 1% per period, whatever
+    # length a period has been given): the cost of one unit of money tied up in
+    # inventory, in transit, or paid ahead of receipt, for one period.
+    cost_of_capital::Float64
+
+    # The most net cash that may be tied up at any point (Inf: no limit). Enforced
+    # as a hard limit by the optimization model, and priced as a penalty by the
+    # simulation's cash_cost_function - see SupplyChain's docstring.
+    cash_budget::Float64
+
     # Lazily computed and cached by get_storage_index/get_product_index/
     # get_location_index/get_lane_index below, and invalidated (reset to
     # nothing) by every add_storage!/add_product!/add_customer!/
@@ -73,8 +83,18 @@ mutable struct SupplyChain
 
     """
     Creates a new supply chain.
+
+    The keyword arguments are:
+     - `discount_factor`: the per-period discount applied to revenues and lost sales by the optimization model.
+     - `cost_of_capital`: the cost of capital per period, as a rate (default 0.0). It prices the money tied up in
+       inventory, in transit, and paid to suppliers ahead of receipt (see [`PaymentTerms`](@ref)).
+     - `cash_budget`: the most net cash that may be tied up at any period (default `Inf`, no limit): purchases, freight
+       and tariffs paid out, less sales received, accumulated over time. The optimization model treats it as a limit;
+       the simulation reports the peak (`peak_cash_outlay`) and `cash_cost_function` penalizes exceeding it.
     """
-    function SupplyChain(horizon=1; discount_factor=1.0)
+    function SupplyChain(horizon=1; discount_factor=1.0, cost_of_capital::Real=0.0, cash_budget::Real=Inf)
+        _require_nonnegative(cost_of_capital, "cost_of_capital")
+        _require_nonnegative(cash_budget, "cash_budget")
         sc = new(horizon,
                  Set{Product}(),
                  Set{Storage}(),
@@ -92,6 +112,8 @@ mutable struct SupplyChain
                  Dict{Tuple{String, String, Union{Nothing, Product}}, Float64}(),
                  nothing,
                  discount_factor,
+                 cost_of_capital,
+                 cash_budget,
                  nothing,
                  nothing,
                  nothing,
@@ -114,7 +136,7 @@ This is how scenarios of one network are built, e.g.
 is the same lane in every scenario.
 """
 function modified_copy(supply_chain::SupplyChain; lane=identity, demand=identity)
-    result = SupplyChain(supply_chain.horizon; discount_factor=supply_chain.discount_factor)
+    result = SupplyChain(supply_chain.horizon; discount_factor=supply_chain.discount_factor, cost_of_capital=supply_chain.cost_of_capital, cash_budget=supply_chain.cash_budget)
     for product in supply_chain.products
         add_product!(result, product)
     end

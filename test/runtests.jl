@@ -533,3 +533,30 @@ end
         get_tariff_rate(scenario, "US", "CA", product) == 0.1 &&
         modified_copy(network).lanes == network.lanes
 end
+
+# Payment terms on Supplier and cost_of_capital on SupplyChain (defaults: pay in full at order, no cost of capital).
+@testset "payment terms and cost of capital" begin
+    s = Supplier("s")
+    @test get_payment_terms(s) == PaymentTerms()
+    @test get_payment_terms(s).deposit_share == 1.0
+    @test get_payment_terms(s).balance_offset == 0
+    @test get_payment_terms(Storage("st")) == PaymentTerms()
+
+    set_payment_terms!(s, PaymentTerms(deposit_share=0.3, balance_offset=-2))
+    @test get_payment_terms(s).deposit_share == 0.3
+    @test get_payment_terms(s).balance_offset == -2
+    @test get_payment_terms(Supplier("s2"; payment_terms=PaymentTerms(deposit_share=0.5))).deposit_share == 0.5
+
+    @test_throws DomainError PaymentTerms(deposit_share=-0.1)
+    @test_throws DomainError PaymentTerms(deposit_share=1.1)
+
+    @test SupplyChain(3).cost_of_capital == 0.0
+    @test SupplyChain(3; cost_of_capital=0.02).cost_of_capital == 0.02
+    @test_throws DomainError SupplyChain(3; cost_of_capital=-0.01)
+    @test modified_copy(SupplyChain(3; cost_of_capital=0.02)).cost_of_capital == 0.02
+
+    @test SupplyChain(3).cash_budget == Inf
+    @test SupplyChain(3; cash_budget=5000).cash_budget == 5000.0
+    @test_throws DomainError SupplyChain(3; cash_budget=-1)
+    @test modified_copy(SupplyChain(3; cash_budget=5000)).cash_budget == 5000.0
+end
