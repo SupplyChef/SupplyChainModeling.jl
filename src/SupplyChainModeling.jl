@@ -12,6 +12,10 @@ export Product
 
 export Demand
 
+export PaymentTerms
+export get_payment_terms
+export set_payment_terms!
+
 export Tariff
 export add_tariff!
 export get_tariff_rate
@@ -111,6 +115,7 @@ include("Customer.jl")
 include("Demand.jl")
 include("Plant.jl")
 include("Storage.jl")
+include("PaymentTerms.jl")
 include("Supplier.jl")
 include("MaturationSource.jl")
 include("QuotaSink.jl")

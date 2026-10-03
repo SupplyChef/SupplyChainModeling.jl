@@ -16,15 +16,18 @@ struct Supplier <: Node
 
     location::Union{Location, Missing}
 
+    # Set through set_payment_terms! (a Ref so the struct itself stays immutable).
+    payment_terms::Base.RefValue{PaymentTerms}
+
     # hash(name), precomputed once at construction - see Product.name_hash.
     name_hash::UInt64
 
     """
-    Creates a new supplier.
+    Creates a new supplier. See [`PaymentTerms`](@ref) for the `payment_terms` keyword argument.
     """
-    function Supplier(name::String, location::Union{Location, Missing}=missing)
+    function Supplier(name::String, location::Union{Location, Missing}=missing; payment_terms::PaymentTerms=PaymentTerms())
         return new(name, Dict{Product, Float64}(), Dict{Product, Float64}(),
-                   Dict{Product, Float64}(), Dict{Product, Float64}(), location, hash(name))
+                   Dict{Product, Float64}(), Dict{Product, Float64}(), location, Ref(payment_terms), hash(name))
     end
 end
 
@@ -77,3 +80,23 @@ Gets the order multiple (e.g. case pack) for a product at a given node: the valu
 """
 get_order_multiple(node, product) = 1.0
 get_order_multiple(supplier::Supplier, product) = get(supplier.order_multiple, product, 1.0)
+
+"""
+    get_payment_terms(node)
+
+Gets the [`PaymentTerms`](@ref) of a node: those of a `Supplier`, or the default (everything paid when the
+order is placed) for any other node.
+"""
+get_payment_terms(node) = PaymentTerms()
+get_payment_terms(supplier::Supplier) = supplier.payment_terms[]
+
+"""
+    set_payment_terms!(supplier::Supplier, payment_terms::PaymentTerms)
+
+Sets when the `supplier` is paid, e.g. `set_payment_terms!(s, PaymentTerms(deposit_share=0.3, balance_offset=-1))`
+for a 30% deposit at order and the balance one period before shipment.
+"""
+function set_payment_terms!(supplier::Supplier, payment_terms::PaymentTerms)
+    supplier.payment_terms[] = payment_terms
+    return nothing
+end
