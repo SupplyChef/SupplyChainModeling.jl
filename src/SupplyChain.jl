@@ -68,6 +68,9 @@ mutable struct SupplyChain
     _location_index::Union{Nothing, IndexedCollection{ConcreteNode}}
     _lane_index::Union{Nothing, IndexedCollection{Lane}}
 
+    # Ids of the lanes added so far, so add_lane! can enforce their uniqueness.
+    _lane_ids::Set{String}
+
     """
     Creates a new supply chain.
     """
@@ -92,9 +95,57 @@ mutable struct SupplyChain
                  nothing,
                  nothing,
                  nothing,
-                 nothing)
+                 nothing,
+                 Set{String}())
         return sc
     end
+end
+
+"""
+    modified_copy(supply_chain::SupplyChain; lane=identity, demand=identity)::SupplyChain
+
+Copies a supply chain, applying `lane` to each of its lanes and `demand` to each of its
+`Demand`s (each must return the same kind of object). Anything not changed is shared with the
+original, not duplicated: nodes, products and tariffs are the same objects, which is safe since
+the simulation only reads them. The original is not modified.
+
+This is how scenarios of one network are built, e.g.
+`modified_copy(sc; lane = l -> Lane(l; lead_times=...))`. Lanes should have ids, so that a lane
+is the same lane in every scenario.
+"""
+function modified_copy(supply_chain::SupplyChain; lane=identity, demand=identity)
+    result = SupplyChain(supply_chain.horizon; discount_factor=supply_chain.discount_factor)
+    for product in supply_chain.products
+        add_product!(result, product)
+    end
+    for storage in supply_chain.storages
+        add_storage!(result, storage)
+    end
+    for supplier in supply_chain.suppliers
+        add_supplier!(result, supplier)
+    end
+    for customer in supply_chain.customers
+        add_customer!(result, customer)
+    end
+    for plant in supply_chain.plants
+        add_plant!(result, plant)
+    end
+    for source in supply_chain.maturation_sources
+        add_maturation_source!(result, source)
+    end
+    for sink in supply_chain.quota_sinks
+        add_quota_sink!(result, sink)
+    end
+    for original in supply_chain.lanes
+        add_lane!(result, lane(original))
+    end
+    for original in supply_chain.demand
+        add_demand!(result, demand(original))
+    end
+    for tariff in supply_chain.tariffs
+        add_tariff!(result, tariff)
+    end
+    return result
 end
 
 """
@@ -283,8 +334,23 @@ end
     add_lane!(supply_chain, lane)
 
 Adds a transportation lane to the supply chain.
+
+A lane's `id`, when it has one, must be unique within the supply chain: it is what identifies the
+lane, e.g. across the scenarios of one network. If the lane has `lead_times`, each must have one
+entry per period of the horizon.
 """
 function add_lane!(supply_chain::SupplyChain, lane::Lane)
+    if !ismissing(lane.id) && lane.id in supply_chain._lane_ids
+        throw(ArgumentError("a lane with id \"$(lane.id)\" is already in the supply chain; lane ids must be unique"))
+    end
+    if !isnothing(lane.lead_times)
+        for lead_times in lane.lead_times
+            if length(lead_times) != supply_chain.horizon
+                throw(ArgumentError("lead_times must have one entry per period (the horizon is $(supply_chain.horizon)), got $(length(lead_times)) for lane $lane"))
+            end
+        end
+    end
+    ismissing(lane.id) || push!(supply_chain._lane_ids, lane.id)
     push!(supply_chain.lanes, lane)
     supply_chain._lane_index = nothing
 
