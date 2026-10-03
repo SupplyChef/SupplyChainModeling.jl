@@ -554,4 +554,9 @@ end
     @test SupplyChain(3; cost_of_capital=0.02).cost_of_capital == 0.02
     @test_throws DomainError SupplyChain(3; cost_of_capital=-0.01)
     @test modified_copy(SupplyChain(3; cost_of_capital=0.02)).cost_of_capital == 0.02
+
+    @test SupplyChain(3).cash_budget == Inf
+    @test SupplyChain(3; cash_budget=5000).cash_budget == 5000.0
+    @test_throws DomainError SupplyChain(3; cash_budget=-1)
+    @test modified_copy(SupplyChain(3; cash_budget=5000)).cash_budget == 5000.0
 end
