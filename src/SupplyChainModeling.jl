@@ -1,6 +1,7 @@
 module SupplyChainModeling
 
 export SupplyChain
+export modified_copy
 export IndexedCollection
 export get_storage_index
 export get_product_index

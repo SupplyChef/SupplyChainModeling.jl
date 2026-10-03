@@ -454,3 +454,82 @@ end
 @test_throws DomainError add_product!(Supplier("s"), Product("p"); unit_cost=1.0, minimum_order_quantity=-1)
 @test_throws DomainError add_product!(Supplier("s"), Product("p"); unit_cost=1.0, order_multiple=0)
 @test_throws DomainError add_product!(Supplier("s"), Product("p"); unit_cost=1.0, order_multiple=2.5)
+
+# Lane ids must be unique within a supply chain.
+@test begin
+    network = SupplyChain(3)
+    s1 = Storage("s1"); s2 = Storage("s2")
+    add_storage!(network, s1); add_storage!(network, s2)
+    add_lane!(network, Lane(s1, s2; id="a"))
+    add_lane!(network, Lane(s1, s2; id="b"))
+    add_lane!(network, Lane(s1, s2))
+    add_lane!(network, Lane(s1, s2))   # lanes without ids are not constrained
+    length(network.lanes) == 4
+end
+@test_throws ArgumentError begin
+    network = SupplyChain(3)
+    s1 = Storage("s1"); s2 = Storage("s2")
+    add_lane!(network, Lane(s1, s2; id="a"))
+    add_lane!(network, Lane(s2, s1; id="a"))
+end
+
+# Realized lead times: by departure period, not part of a lane's identity.
+@test begin
+    s1 = Storage("s1"); s2 = Storage("s2"); s3 = Storage("s3")
+    nominal = Lane(s1, s2; id="l", time=3)
+    l = Lane(s1, s2; id="l", time=3, lead_times=[2, 5, 3])
+    l.lead_times == [[2, 5, 3]] &&
+        get_leadtime(l, 1, 1) == 2 && get_leadtime(l, s2, 2) == 5 && get_leadtime(l, s2, 3) == 3 &&
+        get_leadtime(nominal, s2, 2) == 3 &&              # no lead_times: nominal
+        get_leadtime(l, 1) == 3 &&                        # existing accessor stays nominal
+        l == nominal && hash(l) == hash(nominal) &&       # identity ignores lead_times
+        Lane(s1, [s2, s3]; id="m", times=[1, 2], lead_times=[[1, 1, 1], [2, 3, 4]]).lead_times == [[1, 1, 1], [2, 3, 4]]
+end
+@test begin
+    # Without ids, identity still includes the nominal time, so parallel lanes stay distinct.
+    s1 = Storage("s1"); s2 = Storage("s2")
+    Lane(s1, s2; time=5, lead_times=[5, 5]) != Lane(s1, s2; time=30, lead_times=[5, 5])
+end
+@test_throws DomainError Lane(Storage("s1"), Storage("s2"); lead_times=[1, -1, 2])
+@test_throws ArgumentError Lane(Storage("s1"), [Storage("s2"), Storage("s3")]; lead_times=[[1, 2]])
+@test_throws ArgumentError begin
+    network = SupplyChain(3)
+    add_lane!(network, Lane(Storage("s1"), Storage("s2"); lead_times=[1, 2]))   # horizon is 3
+end
+
+# Lane(lane; ...) copies a lane, keeping its id.
+@test begin
+    s1 = Storage("s1"); s2 = Storage("s2")
+    l = Lane(s1, s2; id="l", fixed_cost=4.0, unit_cost=2.0, minimum_quantity=7.0, time=3)
+    c = Lane(l; lead_times=[1, 2, 3])
+    c == l && c.lead_times == [[1, 2, 3]] && l.lead_times === nothing &&
+        c.fixed_cost == 4.0 && c.unit_cost == 2.0 && c.minimum_quantity == 7.0 && c.times == [3] &&
+        Lane(l; unit_cost=9.0).unit_cost == 9.0
+end
+
+# modified_copy builds scenarios: same network, lanes (and demand) transformed.
+@test begin
+    product = Product("p")
+    s1 = Storage("s1"); s2 = Storage("s2"); customer = Customer("c")
+    network = SupplyChain(3; discount_factor=0.9)
+    add_product!(network, product)
+    add_storage!(network, s1); add_storage!(network, s2); add_customer!(network, customer)
+    l1 = Lane(s1, s2; id="l1", time=2)
+    l2 = Lane(s2, customer; id="l2")
+    add_lane!(network, l1); add_lane!(network, l2)
+    add_demand!(network, customer, product, [1.0, 2.0, 3.0]; sales_price=5.0)
+    add_tariff!(network, Tariff("US", "CA", 0.1))
+
+    scenario = modified_copy(network;
+                             lane = l -> l.id == "l1" ? Lane(l; lead_times=[1, 4, 2]) : l,
+                             demand = d -> Demand(d.customer, d.product, 2 .* d.demand; sales_price=d.sales_price))
+    scenario.horizon == 3 && scenario.discount_factor == 0.9 &&
+        scenario.products == network.products && scenario.storages == network.storages &&
+        [l.id for l in scenario.lanes] == ["l1", "l2"] &&
+        scenario.lanes[1].lead_times == [[1, 4, 2]] && scenario.lanes[2].lead_times === nothing &&
+        first(scenario.demand).demand == [2.0, 4.0, 6.0] && first(network.demand).demand == [1.0, 2.0, 3.0] &&
+        network.lanes[1].lead_times === nothing &&            # original untouched
+        scenario.lanes[1] == network.lanes[1] &&              # same lane across scenarios
+        get_tariff_rate(scenario, "US", "CA", product) == 0.1 &&
+        modified_copy(network).lanes == network.lanes
+end

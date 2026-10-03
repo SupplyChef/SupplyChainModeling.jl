@@ -2,7 +2,8 @@
 const zero1 = [0]
 
 # Hash matching Lane's Base.:(==) (below): the id alone when present,
-# otherwise origin/destinations/times. Written as loops rather than
+# otherwise origin/destinations/times. `lead_times` is never part of a lane's
+# identity. Written as loops rather than
 # sum-over-generator to avoid allocating a closure per call.
 function _lane_hash(id::Union{Missing, String}, origin, destinations, times)::UInt64
     if !ismissing(id)
@@ -38,6 +39,15 @@ struct Lane <: Transport
     initial_arrivals::Union{Nothing, Dict{Product, Array{Array{Int64, 1}, 1}}} # for each time, for each destination the amount arriving
     can_ship::Union{Nothing, Array{Bool, 1}}
 
+    # Realized lead time by departure period, per destination:
+    # lead_times[i][t] is the lead time of a shipment to destinations[i]
+    # that departs in period t (one entry per period of the supply chain's
+    # horizon, checked by add_lane!). `nothing` means every shipment takes
+    # `times[i]`, which stays the nominal lead time (planning, customer due
+    # dates, the optimizer). Not part of the lane's identity - see
+    # Base.:(==) below - so scenarios of one network can differ here.
+    lead_times::Union{Nothing, Vector{Vector{Int}}}
+
     # Precomputed hash over the same fields Base.:(==) compares (id if
     # present, else origin/destinations/times). Lanes key the policy and
     # departure dicts consulted throughout a simulation, and every field is
@@ -51,7 +61,8 @@ struct Lane <: Transport
                                              minimum_quantity=0.0,
                                              time::Int=0,
                                              initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Int, 1}}},
-                                             can_ship=nothing::Union{Nothing, Array{Bool, 1}})
+                                             can_ship=nothing::Union{Nothing, Array{Bool, 1}},
+                                             lead_times=nothing)
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(unit_cost, "unit_cost")
         _require_nonnegative(minimum_quantity, "minimum_quantity")
@@ -66,6 +77,7 @@ struct Lane <: Transport
                    times,
                    isnothing(initial_arrivals) ? initial_arrivals : Dict([p => [[ia[t]] for t in eachindex(ia)] for (p, ia) in initial_arrivals]),
                    can_ship,
+                   _normalize_lead_times(lead_times, 1),
                    _lane_hash(id, origin, destinations, times))
     end
 
@@ -75,7 +87,8 @@ struct Lane <: Transport
                                                      minimum_quantity=0.0,
                                                      times=nothing::Union{Nothing, Array{Int, 1}},
                                                      initial_arrivals=nothing::Union{Nothing, Dict{Product, Array{Array{Int, 1}, 1}}},
-                                                     can_ship=nothing::Union{Nothing, Array{Bool, 1}}) where N <: ConcreteNode
+                                                     can_ship=nothing::Union{Nothing, Array{Bool, 1}},
+                                                     lead_times=nothing) where N <: ConcreteNode
         _require_nonnegative(fixed_cost, "fixed_cost")
         _require_nonnegative(unit_cost, "unit_cost")
         _require_nonnegative(minimum_quantity, "minimum_quantity")
@@ -90,8 +103,49 @@ struct Lane <: Transport
                    lane_times,
                    initial_arrivals,
                    can_ship,
+                   _normalize_lead_times(lead_times, length(node_destinations)),
                    _lane_hash(id, origin, node_destinations, lane_times))
     end
+
+    """
+        Lane(lane::Lane; kwargs...)
+
+    Copies a lane, keeping its `id`, with any of the constructor's keyword arguments replaced.
+    Typically used to build scenarios, e.g. `Lane(lane; lead_times=...)`.
+    """
+    function Lane(lane::Lane; id=lane.id,
+                              fixed_cost=lane.fixed_cost,
+                              unit_cost=lane.unit_cost,
+                              minimum_quantity=lane.minimum_quantity,
+                              times=lane.times,
+                              initial_arrivals=lane.initial_arrivals,
+                              can_ship=lane.can_ship,
+                              lead_times=lane.lead_times)
+        return Lane(lane.origin, lane.destinations; id=id,
+                                                    fixed_cost=fixed_cost,
+                                                    unit_cost=unit_cost,
+                                                    minimum_quantity=minimum_quantity,
+                                                    times=collect(Int, times),
+                                                    initial_arrivals=initial_arrivals,
+                                                    can_ship=can_ship,
+                                                    lead_times=lead_times)
+    end
+end
+
+# Normalizes the `lead_times` keyword to one Vector{Int} per destination
+# (a flat vector is accepted for a single destination) and checks it holds
+# nonnegative values. The length of each vector is checked against the
+# horizon by add_lane!, which is where the horizon is known.
+function _normalize_lead_times(lead_times, destination_count::Int)
+    isnothing(lead_times) && return nothing
+    per_destination = lead_times isa AbstractVector{<:Integer} ? [collect(Int, lead_times)] : [collect(Int, v) for v in lead_times]
+    if length(per_destination) != destination_count
+        throw(ArgumentError("lead_times must have one vector per destination ($destination_count), got $(length(per_destination))"))
+    end
+    for v in per_destination
+        _require_nonnegative(minimum(v; init=0), "lead_times")
+    end
+    return per_destination
 end
 
 Base.:(==)(x::Lane, y::Lane) = begin
@@ -151,6 +205,22 @@ Gets the lead time to reach a destination using a lane.
 """
 function get_leadtime(lane::Lane, destination::ConcreteNode)
     return lane.times[findfirst(d -> d == destination, lane.destinations)]
+end
+
+"""
+    get_leadtime(lane::Lane, destination::Int64, departure::Int64)
+    get_leadtime(lane::Lane, destination::ConcreteNode, departure::Int64)
+
+Gets the lead time of a shipment to a destination that departs in period `departure`: the
+realized `lead_times` entry if the lane has them, otherwise the nominal lead time.
+"""
+function get_leadtime(lane::Lane, destination::Int64, departure::Int64)
+    lead_times = lane.lead_times
+    return isnothing(lead_times) ? lane.times[destination] : lead_times[destination][departure]
+end
+
+function get_leadtime(lane::Lane, destination::ConcreteNode, departure::Int64)
+    return get_leadtime(lane, findfirst(d -> d == destination, lane.destinations), departure)
 end
 
 """
